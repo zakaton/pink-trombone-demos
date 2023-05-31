@@ -1011,30 +1011,7 @@ function deconstructVoiceness(voiceness) {
 }
 
 const phonemeSubstitutions = {
-  accents: {
-    arabic: {
-      p: "b",
-      ð: "z",
-      θs: "s",
-      θ: "s",
-    },
-    japanese: {
-      ʧ: "ʃ",
-      ə: "ʌ",
-      ɑ: "ɔ",
-      ow: "ɔ",
-      ɚ: "a",
-      wʌn: "ʌn",
-      wʌˈn: "ʌˈn",
-      ɹ: "w",
-      //l: "w",
-      θ: "s",
-      e: "eɪ",
-      ʌn: "ɪn",
-      ʌk: "ek",
-      li: "ti",
-    },
-  },
+  accents: {},
   dialects: {
     boston: {
       ɑɹ: "a",
