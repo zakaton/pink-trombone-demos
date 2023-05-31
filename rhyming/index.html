@@ -1,0 +1,99 @@
+<html>
+  <head>
+    <title>Rhyming Dictionary</title>
+    <script src="./../src/utils.js"></script>
+    <!-- https://github.com/surrsurus/text-to-ipa -->
+    <script src="./../src/text-to-ipa.js"></script>
+  </head>
+
+  <style>
+    body,
+    textarea {
+      font-size: x-large;
+    }
+    .grid {
+      display: grid;
+      font-size: xx-large;
+    }
+    #rhymesGrid {
+      overflow-y: scroll;
+      height: 500px;
+    }
+
+    #inputSyllables {
+      display: flex;
+    }
+    .inputSyllable {
+      display: flex;
+      flex-direction: column-reverse;
+    }
+    .vowel {
+      color: green;
+    }
+    .consonant {
+      color: blue;
+    }
+    .semi-vowel {
+      color: red;
+    }
+
+    #rhymes {
+    }
+
+    #rhymeSelectionsWords > span {
+      margin-right: 10px;
+    }
+
+    .grid > *:not(.word) {
+      width: 50px;
+      align-items: center;
+      justify-self: center;
+      text-align: center;
+    }
+  </style>
+
+  <body>
+    <h1>Rhyming Dictionary</h1>
+    <label
+      >words<br />
+      <textarea id="words" placeholder="type words here" cols="70"></textarea>
+    </label>
+    <div id="wordsPhonemesAlternatives">
+      <template id="wordPhonemesAlternativeTemplate">
+        <label class="wordPhonemesAlternative">
+          <span></span>
+          <input type="radio" />
+        </label>
+      </template>
+    </div>
+    <br />
+    <label
+      >phonemes<br />
+      <textarea
+        id="phonemes"
+        placeholder="type phonemes here"
+        cols="70"
+      ></textarea>
+    </label>
+    <button onclick="playOriginalWords()">play original words</button>
+    <br />
+    <br />
+    <div id="rhymeSelectionsWords"></div>
+    <button onclick="clearRhymeSelections()">clear</button>
+    <button onclick="playRhymeSelections()">play rhyme selections</button>
+    <br />
+    <button id="findRhymes" onclick="findRhymes()">find rhymes</button>
+    <div class="grid" id="inputSyllablesGrid">
+      <template id="inputSyllableTemplate">
+        <label class="inputSyllable">
+          <span></span>
+          <input type="checkbox" />
+        </label>
+      </template>
+    </div>
+    <div class="grid" id="rhymeSelectionsGrid"></div>
+    <div class="grid" id="rhymesGrid"></div>
+    <br />
+  </body>
+  <script src="./src/script.js"></script>
+</html>

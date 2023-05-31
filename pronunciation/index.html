@@ -1,0 +1,61 @@
+<html>
+  <head>
+    <title>Pronunciation</title>
+    <script src="./../src/utils.js"></script>
+    <!-- https://github.com/surrsurus/text-to-ipa -->
+    <script src="./../src/text-to-ipa.js"></script>
+  </head>
+  <style>
+    .pronunciation {
+      margin-right: 10px;
+    }
+    #phonemes {
+      font-size: 72px;
+      font-weight: bold;
+      user-select: none;
+    }
+    #phonemes > span.spoken {
+      color: green;
+    }
+    #phonemes > span.current {
+      color: orange;
+    }
+    #phonemes > span.highlighted {
+      color: red;
+    }
+  </style>
+  <body>
+    <h1>Pronunciation</h1>
+    <input
+      id="word"
+      type="text"
+      autocomplete="off"
+      style="font-size: 72px"
+      placeholder="word to pronounce"
+      size="16"
+    />
+    <div id="pronunciations">
+      <template>
+        <label class="pronunciation"
+          ><span></span><input type="radio" name="pronunciation"
+        /></label>
+      </template>
+    </div>
+
+    <label
+      >play phoneme on hover
+      <input
+        type="checkbox"
+        checked
+        oninput="playPhonemeOnHover = event.target.checked"
+    /></label>
+
+    <div id="phonemes"></div>
+    <br />
+    <div id="buttons" style="display: none">
+      <button id="play">play</button>
+      <button id="reset">reset</button>
+    </div>
+  </body>
+  <script src="./src/script.js"></script>
+</html>
