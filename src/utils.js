@@ -20,7 +20,7 @@ function setupWebsocketConnection(webpageName, onMessage, onConnect) {
         webpage: webpageName,
       });
       if (onConnect) {
-        onConnect();
+        onConnect(send);
       }
     });
     socket.addEventListener("message", (event) => {
@@ -43,7 +43,7 @@ function setupWebsocketConnection(webpageName, onMessage, onConnect) {
   return send;
 }
 function setupBroadcastChannel(webpageName, onMessage, onConnect) {
-  let broadcastChannel;
+  let broadcastChannel, send;
   const createBroadcastChannel = () => {
     broadcastChannel = new BroadcastChannel("pink-trombone");
     broadcastChannel.addEventListener("message", (event) => {
@@ -53,16 +53,15 @@ function setupBroadcastChannel(webpageName, onMessage, onConnect) {
         onMessage(message);
       }
     });
+    send = (object) => {
+      object.from = webpageName;
+      broadcastChannel.postMessage(object);
+    };
     if (onConnect) {
-      onConnect();
+      onConnect(send);
     }
   };
   createBroadcastChannel();
-
-  const send = (object) => {
-    object.from = webpageName;
-    broadcastChannel.postMessage(object);
-  };
 
   return send;
 }

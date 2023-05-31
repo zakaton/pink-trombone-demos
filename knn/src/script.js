@@ -41,7 +41,7 @@ const { send } = setupConnection(
       }
     }
   },
-  () => {
+  (send) => {
     send({
       to: ["pink-trombone"],
       type: "message",
