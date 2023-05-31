@@ -203,7 +203,7 @@ if (typeof TextToIPA !== "object") {
 // Load dict
 // Could be intensive, might only want to load when necessary. Therefore it is commented out.
 // Feel free to re-enable if you want to just load the dictionary here, instead of somewhere else
-window.onload = TextToIPA.loadDict("../src/english.txt");
+window.onload = TextToIPA.loadDict("/src/english.txt");
 
 const trimPronunciation = (pronunciation) => {
   nonPhonemeIPAs.forEach((nonPhonemeIPA) => {
