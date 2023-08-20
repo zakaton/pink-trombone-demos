@@ -1,6 +1,6 @@
 /*
   TODO
-    play words
+    overlap by 1 syllable
 */
 
 const { send } = setupConnection("wordplay", (message) => {});
@@ -83,6 +83,7 @@ phonemesInput.addEventListener("input", () => {
 });
 let rhymes = [];
 let syllables = [];
+let syllableOverlap = 1;
 const findRhymes = () => {
   clearRhymeSelections();
 
@@ -112,14 +113,14 @@ const findRhymes = () => {
         syllables.every((syllable, index) => {
           const _index = index - offset;
           const _syllable = _syllables[_index];
-          if (
-            _syllable &&
-            syllablesToCheck[index]
-          ) {
+          if (_syllable && syllablesToCheck[index]) {
             if (syllable.type != _syllable.type) {
               shouldAddRhyme = false;
             }
-            if (syllable.isSemiVowel && syllable.phonemes != _syllable.phonemes) {
+            if (
+              syllable.isSemiVowel &&
+              syllable.phonemes != _syllable.phonemes
+            ) {
               shouldAddRhyme = false;
             }
 
