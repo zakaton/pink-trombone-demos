@@ -302,17 +302,11 @@ function interpolate(from, to, interpolation) {
 let shouldSendToPinkTrombone = false;
 let shouldSendToGame = false;
 let shouldSendToLipSync = false;
-let shouldSendToVVVV = true;
 let shouldSendToRobot = false;
 let shouldSendToPronunciation = false;
 const throttledSendToPinkTrombone = throttle((message) => {
   if (shouldSendToPinkTrombone) {
     send({ to: ["pink-trombone"], type: "message", ...message });
-  }
-}, 20);
-const throttledSendToVVVV = throttle((message) => {
-  if (shouldSendToVVVV) {
-    send({ to: ["vvvv"], type: "message", ...message });
   }
 }, 20);
 const throttledSendToGame = throttle(() => {
