@@ -83,7 +83,6 @@ phonemesInput.addEventListener("input", () => {
 });
 let rhymes = [];
 let syllables = [];
-let syllableOverlap = 1;
 const findRhymes = () => {
   clearRhymeSelections();
 
@@ -215,10 +214,13 @@ const displayRhymes = () => {
   });
 };
 const getRhymeRange = (rhyme) => {
-  return [rhyme.offset, rhyme.offset + rhyme.syllables.length];
+  return [rhyme.offset, rhyme.offset + rhyme.syllables.length - 1];
 };
-const isOutsideRange = (a, b) => {
-  return a[1] <= b[0] || a[0] >= b[1];
+const isOutsideRange = (a, b, overlap = 0) => {
+  return a[1] < b[0] + overlap || a[0] > b[1] + overlap;
+};
+const isOverlappingBy1 = (a, b) => {
+  return a[1] == b[0] || a[0] == b[1];
 };
 let rhymeSelectionsWords = "";
 const updateRhymeSelectionsGrid = () => {
@@ -265,9 +267,26 @@ const updateRhymes = () => {
     if (rhyme) {
       const range = getRhymeRange(rhyme);
       let shouldShow = true;
-      selectedRhymes.every((_rhyme) => {
-        const _range = getRhymeRange(_rhyme);
-        shouldShow = isOutsideRange(range, _range);
+      selectedRhymes.every((selectedRhyme) => {
+        const selectedRhymeRange = getRhymeRange(selectedRhyme);
+        shouldShow = isOutsideRange(selectedRhymeRange, range, 1);
+        if (isOverlappingBy1(selectedRhymeRange, range)) {
+          if (range[0] == syllables.length - 1) {
+            shouldShow = false;
+          } else {
+            let s1, s2;
+
+            if (selectedRhymeRange[1] == range[0]) {
+              s1 = selectedRhyme.syllables;
+              s2 = rhyme.syllables;
+            } else {
+              s1 = rhyme.syllables;
+              s2 = selectedRhyme.syllables;
+            }
+
+            shouldShow = s1[s1.length - 1].phonemes == s2[0].phonemes;
+          }
+        }
         return shouldShow;
       });
 
