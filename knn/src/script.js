@@ -147,7 +147,6 @@ const onData = ({ spectrum, loudness }) => {
       predictThrottled(spectrum);
     }
     _spectrum = spectrum;
-    throttledSendToVVVV({ spectrum, to: ["vvvv"] });
   } else {
     if (predictFlag) {
       const message = {

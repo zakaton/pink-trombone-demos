@@ -39,7 +39,7 @@ const throttledSend = throttle(() => {
   const message = {
     type: "message",
     from: "pitch",
-    to: ["vvvv", "pink-trombone"],
+    to: ["pink-trombone"],
     //intensity: Math.min(getInterpolation(0, 0.3, volume), 1),
   };
   if (volume > volumeThreshold && clarity > clarityThreshold && pitch > 100) {
