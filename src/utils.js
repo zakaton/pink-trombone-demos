@@ -1279,3 +1279,7 @@ const areConsonantsInSameGroup = (a, b) => {
   });
   return consonantsAreInSameGroup;
 };
+
+const tractLengthRange = { min: 15, max: 88 };
+const isTractLengthInRange = (tractLength) =>
+  tractLength >= tractLengthRange.min && tractLength <= tractLengthRange.max;

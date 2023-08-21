@@ -36,10 +36,10 @@ const downloadButton = document.getElementById("download");
 downloadButton.addEventListener("click", () => {
   const utterance = getUtterance();
   utterance.keyframes.forEach((keyframe) => {
-    if (!("frequency" in keyframe)) {
+    if (!keyframe.frequency) {
       keyframe.frequency = initialFrequency;
     }
-    if (!("tractLength" in keyframe)) {
+    if (!keyframe.tractLength) {
       keyframe.tractLength = initialTractLength;
     }
   });
@@ -537,7 +537,11 @@ const createResultContainer = () => {
         const tractLength = Number(event.target.value);
         const keyframe = _keyframes[0];
         if (keyframe) {
-          keyframe.tractLength = tractLength;
+          if (isTractLengthInRange(tractLength)) {
+            keyframe.tractLength = tractLength;
+          } else {
+            delete keyframe.tractLength;
+          }
         }
       });
 
