@@ -72,15 +72,23 @@ function updateUI(message) {
 }
 
 const trackElements = {
-  frequency: document.getElementById("frequency"),
+  frequency: Array.from(document.querySelectorAll(".frequency")),
   voiceness: document.getElementById("voiceness"),
   intensity: document.getElementById("intensity"),
 };
 for (const type in trackElements) {
   const element = trackElements[type];
-  element.addEventListener("input", (event) => {
-    const value = Number(event.target.value);
-    throttledSend({ [type]: value });
+  const elements = Array.isArray(element) ? element : [element];
+  elements.forEach((element) => {
+    element.addEventListener("input", (event) => {
+      const value = Number(event.target.value);
+      elements.forEach((_element) => {
+        if (_element != element) {
+          _element.value = value;
+        }
+      });
+      throttledSend({ [type]: value });
+    });
   });
 }
 
