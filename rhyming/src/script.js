@@ -269,8 +269,15 @@ const updateRhymes = () => {
       let shouldShow = true;
       selectedRhymes.every((selectedRhyme) => {
         const selectedRhymeRange = getRhymeRange(selectedRhyme);
-        shouldShow = isOutsideRange(selectedRhymeRange, range, 1);
-        if (isOverlappingBy1(selectedRhymeRange, range)) {
+        shouldShow = isOutsideRange(
+          selectedRhymeRange,
+          range,
+          rhyme.syllables.length == 1 ? 0 : 1
+        );
+        if (
+          isOverlappingBy1(selectedRhymeRange, range) &&
+          rhyme.syllables.length > 1
+        ) {
           if (range[0] == syllables.length - 1) {
             shouldShow = false;
           } else {
