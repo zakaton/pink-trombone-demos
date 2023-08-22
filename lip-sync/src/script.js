@@ -39,6 +39,11 @@ const debouncedResetMouth = debounce(() => {
 
 const isDebug = searchParams.get("debug") != undefined;
 
+const overlay = document.getElementById("overlay");
+if (!isDebug) {
+  overlay.setAttribute("hidden", "");
+}
+
 let morphTargetInfluences, morphTargetDictionary;
 const avatar = document.getElementById("avatar");
 avatar.addEventListener("model-loaded", () => {
