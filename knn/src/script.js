@@ -299,7 +299,7 @@ function interpolate(from, to, interpolation) {
   return (1 - interpolation) * from + interpolation * to;
 }
 
-let shouldSendToPinkTrombone = false;
+let shouldSendToPinkTrombone = true;
 let shouldSendToGame = false;
 let shouldSendToLipSync = false;
 let shouldSendToRobot = false;
