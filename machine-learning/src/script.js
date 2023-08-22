@@ -157,11 +157,7 @@ const onData = ({ spectrum, loudness }) => {
 
   if (loudness > loudnessThreshold) {
     if (isCollectingData) {
-      addData(spectrum);
-      numberOfSamplesCollected++;
-      if (numberOfSamplesCollected >= numberOfSamplesToCollect) {
-        toggleDataCollection();
-      }
+      addDataThrottled(spectrum);
     }
     if (finishedTraining) {
       predictThrottled(spectrum);
@@ -177,6 +173,14 @@ const onData = ({ spectrum, loudness }) => {
   }
   _loudness = loudness;
 };
+
+const addDataThrottled = throttle((spectrum) => {
+  addData(spectrum);
+  numberOfSamplesCollected++;
+  if (numberOfSamplesCollected >= numberOfSamplesToCollect) {
+    toggleDataCollection();
+  }
+}, 10);
 
 let includeBackConstriction = false;
 let includeFrontConstriction = false;
@@ -248,7 +252,7 @@ function train() {
   neuralNetwork.train(
     {
       epochs: 50,
-      batchSize: 50,
+      batchSize: 30,
     },
     whileTraining,
     onFinishedTraining
