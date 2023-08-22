@@ -251,9 +251,6 @@ const phonemeToMorphTargets = {
   b: {
     viseme_PP: 1,
   },
-  b: {
-    viseme_PP: 1,
-  },
   d: {
     viseme_DD: 0.55,
   },
