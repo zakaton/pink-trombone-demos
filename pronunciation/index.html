@@ -13,15 +13,33 @@
       font-size: 72px;
       font-weight: bold;
       user-select: none;
+
+      -webkit-touch-callout: none; /* iOS Safari */
+      -webkit-user-select: none; /* Safari */
+      -khtml-user-select: none; /* Konqueror HTML */
+      -moz-user-select: none; /* Old versions of Firefox */
+      -ms-user-select: none; /* Internet Explorer/Edge */
     }
-    #phonemes > span.spoken {
+    #phonemes > .phoneme.spoken {
       color: green;
     }
-    #phonemes > span.current {
+    #phonemes > .phoneme.current {
       color: orange;
     }
-    #phonemes > span.highlighted {
+    #phonemes > .phoneme.highlighted {
       color: red;
+    }
+    #phonemes > .phoneme {
+      cursor: pointer;
+    }
+    .noselect {
+      -webkit-touch-callout: none; /* iOS Safari */
+      -webkit-user-select: none; /* Safari */
+      -khtml-user-select: none; /* Konqueror HTML */
+      -moz-user-select: none; /* Old versions of Firefox */
+      -ms-user-select: none; /* Internet Explorer/Edge */
+      user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome, Edge, Opera and Firefox */
     }
   </style>
   <body>
