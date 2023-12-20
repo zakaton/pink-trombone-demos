@@ -29,7 +29,7 @@ let selectedPronunciation;
 let trimmedSelectedPronunciation;
 let currentPhonemeIndex = 0;
 wordInput.addEventListener("input", (event) => {
-  word = event.target.value;
+  word = event.target.value.toLowerCase();
   pronunciations = TextToIPA._IPADict[word] || [];
   updatePronunciations();
   setPronunciation(pronunciations[0]);
@@ -95,36 +95,48 @@ const setPronunciation = (pronunciation) => {
     trimmedSelectedPronunciation = trimPronunciation(selectedPronunciation);
     Array.from(trimmedSelectedPronunciation).forEach((phoneme, index) => {
       const span = document.createElement("span");
+      span.classList.add("phoneme")
       span.innerText = phoneme;
-      span.addEventListener("mouseenter", () => {
+      
+      const onEnter = () => {
         if (playPhonemeOnHover) {
           span.classList.add("highlighted");
           highlightedPhoneme = phoneme;
           throttledSend({ phoneme, intensity: 1 });
         }
-      });
-      span.addEventListener("mouseleave", () => {
+      }
+      span.addEventListener("mouseenter", () => onEnter());
+      span.addEventListener("pointerenter", () => onEnter());
+      
+      const onLeave = () => {
         if (playPhonemeOnHover) {
           span.classList.remove("highlighted");
           highlightedPhoneme = undefined;
           debouncedSilence();
         }
-      });
+      }
+      span.addEventListener("mouseleave", () => onLeave());
+      span.addEventListener("pointerleave", () => onLeave());
 
-      span.addEventListener("mousedown", () => {
+      const onDown = () => {
         if (!playPhonemeOnHover) {
           span.classList.add("highlighted");
           highlightedPhoneme = phoneme;
           throttledSend({ phoneme, intensity: 1 });
         }
-      });
-      span.addEventListener("mouseup", () => {
+      }
+      span.addEventListener("mousedown", () => onDown());
+      span.addEventListener("pointerdown", () => onDown());
+      
+      const onUp = () => {
         if (!playPhonemeOnHover) {
           span.classList.remove("highlighted");
           highlightedPhoneme = undefined;
           throttledSend({ intensity: 0 });
         }
-      });
+      }
+      span.addEventListener("mouseup", () => onUp());
+      span.addEventListener("pointerup", () => onUp());
 
       phonemesContainer.appendChild(span);
     });

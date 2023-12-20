@@ -116,7 +116,7 @@ const results = [];
 let finalString = "";
 const validTextStrings = [];
 textInput.addEventListener("input", (event) => {
-  const strings = event.target.value.split(" ");
+  const strings = event.target.value.toLowerCase().split(" ");
   results.length = 0;
 
   validPhonemesSpan.innerHTML = "";
@@ -128,7 +128,7 @@ textInput.addEventListener("input", (event) => {
       if (ipas) {
         validTextStrings.push(string);
         results.push(ipas.slice());
-        //console.log("ipas", index, ipas);
+        //console.log("ipas", ipas);
       }
     }
   });
