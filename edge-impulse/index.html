@@ -1,0 +1,72 @@
+<html>
+  <head>
+    <title>Edge Impulse</title>
+  </head>
+
+  <style>
+    #topPrediction {
+      font-weight: bold;
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      font-size: 100px;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
+
+  <body>
+    <h1>Edge Impulse</h1>
+
+    <div>
+      <select id="microphoneSelect" hidden>
+        <optgroup id="microphoneOptGroup" label="select microphone"></optgroup>
+      </select>
+      <button id="toggleMicrophone">enable microphone</button>
+      <button id="debugMicrophone" hidden>listen to mirophone</button>
+    </div>
+
+    <h3>Device</h3>
+    <div>
+      <label>name <input type="text" id="deviceId" size="30" value="Generic Web Browser" /></label>
+    </div>
+
+    <h3>Keys</h3>
+
+    <div class="column">
+      <label>api key <input type="text" id="apiKey" size="70" /></label>
+      <label>project id <input type="text" id="projectId" size="8" /></label>
+    </div>
+
+    <h3>Remote Management</h3>
+
+    <button id="toggleRemoteManagementConnection">connect</button>
+    <label> reconnect on disconnection? <input id="reconnectRemoteManagementOnDisconnection" type="checkbox" /> </label>
+
+    <h3>Sampling</h3>
+
+    <div class="column">
+      <label>path <input id="path" type="text" readonly /></label>
+      <label>label <input id="label" type="text" /></label>
+      <label>
+        interval (ms) <input id="samplingInterval" type="number" min="10" value="20" step="5" max="1000" />
+      </label>
+      <label>number of samples <input id="numberOfSamples" type="number" min="1" value="1" step="1" /></label>
+      <label>
+        length (ms)
+        <input id="samplingLength" readonly type="number" min="10" value="20" step="5" max="60000" />
+      </label>
+    </div>
+
+    <button id="getHmacKey" disabled>get hmacKey</button>
+    <button id="toggleSampling" disabled>start sampling</button>
+
+    <button id="addData" disabled>add data</button>
+  </body>
+
+  <script src="/src/utils.js"></script>
+
+  <script src="/edge-impulse/src/script.js"></script>
+</html>
