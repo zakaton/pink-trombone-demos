@@ -1,0 +1,134 @@
+<html>
+  <head>
+    <script src="/src/utils.js"></script>
+
+    <script src="/pink-trombone/src/pink-trombone.min.js" type="module"></script>
+  </head>
+
+  <body>
+    <div style="position: absolute; left: 0; top: 0; z-index: 100">
+      <select id="microphoneSelect" hidden>
+        <optgroup id="microphoneOptGroup" label="select microphone"></optgroup>
+      </select>
+      <button id="toggleMicrophone">enable microphone</button>
+      <button id="debugMicrophone" hidden>listen to mirophone</button>
+    </div>
+
+    <pink-trombone></pink-trombone>
+
+    <script>
+      const audioContext = new AudioContext();
+      autoResumeAudioContext(audioContext);
+
+      const pinkTromboneElement = document.querySelector("pink-trombone");
+
+      pinkTromboneElement.addEventListener("load", (event) => {
+        pinkTromboneElement.setAudioContext(audioContext).then((pinkTrombone) => {
+          pinkTromboneElement.enableUI();
+          pinkTromboneElement.startUI();
+          pinkTromboneElement.connect(pinkTromboneElement.audioContext.destination);
+        });
+      });
+    </script>
+
+    <script>
+      /** @type {MediaStream|undefined} */
+      var mediaStream;
+      /** @type {MediaStreamAudioSourceNode|undefined} */
+      var mediaStreamSourceNode;
+      const toggleMicrophoneButton = document.getElementById("toggleMicrophone");
+      toggleMicrophoneButton.addEventListener("click", async () => {
+        if (isMicrophoneOn()) {
+          stopMicrophone();
+        } else {
+          await getMicrophone();
+        }
+      });
+
+      const isMicrophoneOn = () => {
+        return Boolean(mediaStream);
+      };
+
+      const getMicrophone = async () => {
+        stopMicrophone();
+
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: microphoneSelect.value ? microphoneSelect.value : true,
+            autoGainControl: false,
+            noiseSuppression: false,
+            echoCancellation: false,
+          },
+        });
+        mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
+        mediaStreamSourceNode.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode);
+        pinkTromboneElement.pinkTrombone._fricativeFilter.disconnect();
+        pinkTromboneElement.pinkTrombone._aspirateFilter.disconnect();
+
+        debugMicrophoneButton.removeAttribute("hidden");
+        toggleMicrophoneButton.innerText = "disable microphone";
+      };
+      const stopMicrophone = () => {
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          mediaStream = undefined;
+          mediaStreamSourceNode?.disconnect();
+          mediaStreamSourceNode = undefined;
+          isListeningToMicrophone = false;
+          debugMicrophoneButton.setAttribute("hidden", "");
+          toggleMicrophoneButton.innerText = "enable microphone";
+
+          pinkTromboneElement.pinkTrombone._fricativeFilter.connect(
+            pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+          );
+          pinkTromboneElement.pinkTrombone._aspirateFilter.connect(
+            pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+          );
+        }
+      };
+
+      /** @type {HTMLSelectElement} */
+      const microphoneSelect = document.getElementById("microphoneSelect");
+      /** @type {HTMLOptGroupElement} */
+      const microphoneOptGroup = document.getElementById("microphoneOptGroup");
+      const updateMicrophoneSelect = async () => {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const microphones = devices.filter((device) => device.kind == "audioinput");
+        if (microphones.length > 0) {
+          microphoneSelect.removeAttribute("hidden");
+          microphoneOptGroup.innerHTML = "";
+          microphones.forEach((microphone) => {
+            microphoneOptGroup.appendChild(new Option(microphone.label, microphone.deviceId));
+          });
+        } else {
+          microphoneSelect.setAttribute("hidden", "");
+        }
+      };
+      navigator.mediaDevices.addEventListener("devicechange", () => {
+        updateMicrophoneSelect();
+      });
+      updateMicrophoneSelect();
+
+      microphoneSelect.addEventListener("input", async () => {
+        if (isMicrophoneOn()) {
+          await getMicrophone();
+        }
+      });
+
+      var isListeningToMicrophone = false;
+      const debugMicrophoneButton = document.getElementById("debugMicrophone");
+      debugMicrophoneButton.addEventListener("click", () => {
+        if (mediaStreamSourceNode) {
+          isListeningToMicrophone = !isListeningToMicrophone;
+          if (isListeningToMicrophone) {
+            mediaStreamSourceNode.connect(audioContext.destination);
+            debugMicrophoneButton.innerText = "stop listening to microphone";
+          } else {
+            mediaStreamSourceNode.disconnect(audioContext.destination);
+            debugMicrophoneButton.innerText = "listen to microphone";
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

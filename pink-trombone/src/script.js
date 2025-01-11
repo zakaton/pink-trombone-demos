@@ -20,9 +20,7 @@ pinkTromboneElement.addEventListener("load", (event) => {
         audioContext.destination.channelCount = 2;
       }
 
-      pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(
-        audioContext.destination
-      );
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(audioContext.destination);
     } else {
       pinkTromboneElement.connect(pinkTromboneElement.audioContext.destination);
     }
@@ -51,14 +49,8 @@ pinkTromboneElement.addEventListener("setConstriction", (event) => {
 
     switch (event.detail.type) {
       case "linear":
-        constriction.index.linearRampToValueAtTime(
-          indexValue,
-          event.detail.endTime
-        );
-        constriction.diameter.linearRampToValueAtTime(
-          diameterValue,
-          event.detail.endTime
-        );
+        constriction.index.linearRampToValueAtTime(indexValue, event.detail.endTime);
+        constriction.diameter.linearRampToValueAtTime(diameterValue, event.detail.endTime);
         break;
       default:
         constriction.index.value = indexValue;
@@ -130,13 +122,10 @@ const updateConstriction = throttle(() => {
     constrictions: {},
   };
 
-  const constrictionIndex =
-    pinkTromboneElement.UI._tractUI._touchConstrictionIndices[-1];
+  const constrictionIndex = pinkTromboneElement.UI._tractUI._touchConstrictionIndices[-1];
   const isTongue = constrictionIndex == -1;
   if (isTongue) {
-    const { index, diameter } = deconstructConstriction(
-      pinkTromboneElement.tongue
-    );
+    const { index, diameter } = deconstructConstriction(pinkTromboneElement.tongue);
     message.constrictions.tongue = {
       index,
       diameter,
@@ -147,13 +136,9 @@ const updateConstriction = throttle(() => {
     );
     if (!(index == 0 && diameter == 0)) {
       const isBackConstriction = index < getIndexThreshold();
-      const targetConstriction = isBackConstriction
-        ? backConstriction
-        : frontConstriction;
+      const targetConstriction = isBackConstriction ? backConstriction : frontConstriction;
       setConstriction(targetConstriction, index, diameter);
-      message.constrictions[
-        isBackConstriction ? "backConstriction" : "frontConstriction"
-      ] = {
+      message.constrictions[isBackConstriction ? "backConstriction" : "frontConstriction"] = {
         index,
         diameter,
       };
@@ -267,16 +252,8 @@ const { send } = setupConnection("pink-trombone", (message) => {
           setVoiceness(voiceness);
           if (!("intensity" in message)) {
             exponentialRampToValueAtTime(pinkTromboneElement.intensity, 1);
-            exponentialRampToValueAtTime(
-              pinkTromboneElement.intensity,
-              1,
-              0.1 * constrictions.length
-            );
-            exponentialRampToValueAtTime(
-              pinkTromboneElement.intensity,
-              0,
-              0.1 * constrictions.length + 1
-            );
+            exponentialRampToValueAtTime(pinkTromboneElement.intensity, 1, 0.1 * constrictions.length);
+            exponentialRampToValueAtTime(pinkTromboneElement.intensity, 0, 0.1 * constrictions.length + 1);
           }
           constrictions.forEach((constriction, index) => {
             const { tongue, front, back } = constriction;
@@ -306,10 +283,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 nodes.push(node);
               });
             } else {
-              exponentialRampToValueAtTime(
-                frontConstriction.diameter,
-                frontConstriction.diameter.maxValue
-              );
+              exponentialRampToValueAtTime(frontConstriction.diameter, frontConstriction.diameter.maxValue);
             }
             if (back) {
               features.forEach((feature) => {
@@ -323,10 +297,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 nodes.push(node);
               });
             } else {
-              exponentialRampToValueAtTime(
-                backConstriction.diameter,
-                backConstriction.diameter.maxValue
-              );
+              exponentialRampToValueAtTime(backConstriction.diameter, backConstriction.diameter.maxValue);
             }
             nodes.forEach(({ node, value }) => {
               // FIX timing
@@ -389,10 +360,7 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
     value = 0.0001;
   }
   //node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
-  node.exponentialRampToValueAtTime(
-    value,
-    pinkTromboneElement.audioContext.currentTime + offset
-  );
+  node.exponentialRampToValueAtTime(value, pinkTromboneElement.audioContext.currentTime + offset);
 }
 
 const keyframeStrings = [
@@ -432,10 +400,7 @@ function playKeyframes(keyframes) {
         node = node[path.shift()];
       }
       const offset = keyframe.time;
-      node.linearRampToValueAtTime(
-        value,
-        pinkTromboneElement.audioContext.currentTime + offset
-      );
+      node.linearRampToValueAtTime(value, pinkTromboneElement.audioContext.currentTime + offset);
     });
   });
 }
@@ -452,8 +417,7 @@ const toggleDarkMode = () => {
     document.body.style.margin = "0px";
     document.body.style.filter = "grayscale(1)";
   } else {
-    pinkTromboneElement.UI._container.style.gridTemplateRows =
-      "auto 200px 100px";
+    pinkTromboneElement.UI._container.style.gridTemplateRows = "auto 200px 100px";
     pinkTromboneElement.UI._container.style.gridTemplateColumns = "auto 100px";
     pinkTromboneElement.UI._buttonsUI._container.style.display = "flex";
     pinkTromboneElement.UI._glottisUI._container.style.display = "";
@@ -464,4 +428,102 @@ const toggleDarkMode = () => {
 const debouncedToggleDarkMode = debounce(() => toggleDarkMode(), 10);
 darkModeButton.addEventListener("click", () => {
   debouncedToggleDarkMode();
+});
+
+/** @type {MediaStream|undefined} */
+var mediaStream;
+/** @type {MediaStreamAudioSourceNode|undefined} */
+var mediaStreamSourceNode;
+const toggleMicrophoneButton = document.getElementById("toggleMicrophone");
+toggleMicrophoneButton.addEventListener("click", async () => {
+  if (isMicrophoneOn()) {
+    stopMicrophone();
+  } else {
+    await getMicrophone();
+  }
+});
+
+const isMicrophoneOn = () => {
+  return Boolean(mediaStream);
+};
+
+const getMicrophone = async () => {
+  stopMicrophone();
+
+  mediaStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      deviceId: microphoneSelect.value ? microphoneSelect.value : true,
+      autoGainControl: false,
+      noiseSuppression: false,
+      echoCancellation: false,
+    },
+  });
+  if (!didCheckMicrophonesOnce) {
+    updateMicrophoneSelect();
+  }
+  mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
+  mediaStreamSourceNode.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode);
+  pinkTromboneElement.pinkTrombone._fricativeFilter.disconnect();
+  pinkTromboneElement.pinkTrombone._aspirateFilter.disconnect();
+
+  debugMicrophoneButton.removeAttribute("hidden");
+  toggleMicrophoneButton.innerText = "disable microphone";
+};
+const stopMicrophone = () => {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach((track) => track.stop());
+    mediaStream = undefined;
+    mediaStreamSourceNode?.disconnect();
+    mediaStreamSourceNode = undefined;
+    isListeningToMicrophone = false;
+    debugMicrophoneButton.setAttribute("hidden", "");
+    toggleMicrophoneButton.innerText = "enable microphone";
+
+    pinkTromboneElement.pinkTrombone._fricativeFilter.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise);
+    pinkTromboneElement.pinkTrombone._aspirateFilter.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise);
+  }
+};
+
+/** @type {HTMLSelectElement} */
+const microphoneSelect = document.getElementById("microphoneSelect");
+/** @type {HTMLOptGroupElement} */
+const microphoneOptGroup = document.getElementById("microphoneOptGroup");
+const updateMicrophoneSelect = async () => {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const microphones = devices.filter((device) => device.kind == "audioinput");
+  if (microphones.length > 0) {
+    microphoneSelect.removeAttribute("hidden");
+    microphoneOptGroup.innerHTML = "";
+    microphones.forEach((microphone) => {
+      microphoneOptGroup.appendChild(new Option(microphone.label, microphone.deviceId));
+    });
+    didCheckMicrophonesOnce = true;
+  } else {
+    microphoneSelect.setAttribute("hidden", "");
+  }
+};
+navigator.mediaDevices.addEventListener("devicechange", () => {
+  updateMicrophoneSelect();
+});
+updateMicrophoneSelect();
+
+microphoneSelect.addEventListener("input", async () => {
+  if (isMicrophoneOn()) {
+    await getMicrophone();
+  }
+});
+
+var isListeningToMicrophone = false;
+const debugMicrophoneButton = document.getElementById("debugMicrophone");
+debugMicrophoneButton.addEventListener("click", () => {
+  if (mediaStreamSourceNode) {
+    isListeningToMicrophone = !isListeningToMicrophone;
+    if (isListeningToMicrophone) {
+      mediaStreamSourceNode.connect(audioContext.destination);
+      debugMicrophoneButton.innerText = "stop listening to microphone";
+    } else {
+      mediaStreamSourceNode.disconnect(audioContext.destination);
+      debugMicrophoneButton.innerText = "listen to microphone";
+    }
+  }
 });

@@ -2,19 +2,19 @@
   <head>
     <title>Pink Trombone</title>
     <script src="/src/utils.js"></script>
-    <script
-      src="/pink-trombone/src/pink-trombone.min.js"
-      type="module"
-    ></script>
+    <script src="/pink-trombone/src/pink-trombone.min.js" type="module"></script>
   </head>
 
   <body>
-    <button hidden
-      id="darkMode"
-      style="position: absolute; left: 0; top: 0; z-index: 100"
-    >
-      🌗
-    </button>
+    <div style="position: absolute; left: 0; top: 0; z-index: 100">
+      <button id="darkMode">🌗</button>
+      <select id="microphoneSelect" hidden>
+        <optgroup id="microphoneOptGroup" label="select microphone"></optgroup>
+      </select>
+      <button id="toggleMicrophone">enable microphone</button>
+      <button id="debugMicrophone" hidden>listen to mirophone</button>
+    </div>
+
     <pink-trombone></pink-trombone>
     <script src="/pink-trombone/src/script.js"></script>
   </body>

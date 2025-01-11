@@ -8,28 +8,25 @@
     <p>
       <i
         >A collection of demos using
-        <a href="http://venuspatrol.nfshost.com/" target="_blank"
-          >Neil Thapen's</a
-        >
-        <a href="https://dood.al/pinktrombone/" target="_blank">Pink Trombone</a
-        >.</i
+        <a href="http://venuspatrol.nfshost.com/" target="_blank">Neil Thapen's</a>
+        <a href="https://dood.al/pinktrombone/" target="_blank">Pink Trombone</a>.</i
       >
     </p>
 
     <p>
       The webpages work by communicating with each other using the
-      <a
-        href="https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel"
-        target="_blank"
+      <a href="https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel" target="_blank"
         >BroadcastChannel API</a
       >, so some pages need other pages open to work, e.g. the
       <a href="tts/">Text-to-Speech</a>
       webpage sends messages to the
       <a href="pink-trombone/">Pink Trombone</a> webpage.
     </p>
-    
+
     <p>
-      Source code is available on <a href="https://glitch.com/edit/#!/pink-trombone-demos" target="_blank">glitch</a> and <a href="https://github.com/zakaton/pink-trombone-demos" target="_blank">github</a>
+      Source code is available on
+      <a href="https://glitch.com/edit/#!/pink-trombone-demos" target="_blank">glitch</a> and
+      <a href="https://github.com/zakaton/pink-trombone-demos" target="_blank">github</a>
     </p>
 
     <iframe
@@ -44,22 +41,19 @@
 
     <hr />
 
-
     <h3 id="pink-trombone">
       <a href="/pink-trombone" target="_blank">Pink Trombone</a>
     </h3>
     <p>
-      Opens the "Pink Trombone" Speech Synthesizer. Receives messages from the
-      other webpages to control it. <span hidden>Also includes a
-        <a href="/pink-trombone/?dark" target="_blank">dark mode</a> and
-        <a href="/pink-trombone/default.html" target="_blank"
-          >multi-channel mode</a
-        >
-        (you won't need to use these versions)</span>
+      Opens the "Pink Trombone" Speech Synthesizer. Receives messages from the other webpages to control it.
+      <span hidden
+        >Also includes a <a href="/pink-trombone/?dark" target="_blank">dark mode</a> and
+        <a href="/pink-trombone/default.html" target="_blank">multi-channel mode</a>
+        (you won't need to use these versions)</span
+      >
     </p>
 
     <hr />
-
 
     <h3 id="debug"><a href="/debug" target="_blank">Debug</a></h3>
     <p>Used for sending test messages to Pink Trombone</p>
@@ -68,7 +62,6 @@
     </p>
 
     <hr />
-
 
     <h3 id="pitch"><a href="/pitch" target="_blank">Pitch</a></h3>
     <p>Gets the microphone's Pitch and sends it to Pink Trombone.</p>
@@ -117,11 +110,8 @@
     -->
 
     <h3 id="knn">
-      KNN Classifier (<a href="/knn" target="_blank">Meyda.js MFCC</a>) <span hidden>(<a
-        href="/knn/?essentia"
-        target="_blank"
-        >Essentia.js Mel Spectrogram</a
-      >)</span>
+      KNN Classifier (<a href="/knn" target="_blank">Meyda.js MFCC</a>)
+      <span hidden>(<a href="/knn/?essentia" target="_blank">Essentia.js Mel Spectrogram</a>)</span>
     </h3>
     <iframe
       width="560"
@@ -144,18 +134,13 @@
         target="_blank"
         >MFCC</a
       >
-      <span hidden>(or
-        <a href="https://mtg.github.io/essentia.js/" target="_blank"
-          >Essentia.js's</a
-        >
-        <a href="https://essentiajs-melspectrogram.netlify.app/" target="_blank"
-          >Mel Spectrogram</a
-        >)</span> to create a
-      <a
-        href="https://learn.ml5js.org/#/reference/knn-classifier"
-        target="_blank"
-        >KNN Classifier</a
+      <span hidden
+        >(or
+        <a href="https://mtg.github.io/essentia.js/" target="_blank">Essentia.js's</a>
+        <a href="https://essentiajs-melspectrogram.netlify.app/" target="_blank">Mel Spectrogram</a>)</span
       >
+      to create a
+      <a href="https://learn.ml5js.org/#/reference/knn-classifier" target="_blank">KNN Classifier</a>
       that maps speech to Pink Trombone parameters.
     </p>
     <p>
@@ -163,7 +148,6 @@
     </p>
 
     <hr />
-
 
     <h3 id="3d"><a href="/3d" target="_blank">3D Navigation</a></h3>
     <iframe
@@ -180,8 +164,8 @@
     </p>
     <p>
       Moves around an
-      <a href="https://aframe.io/" target="_blank">A-FRAME</a> scene using the
-      <a href="#knn">KNN Classifier</a>, using classes <b><i>forward</i></b
+      <a href="https://aframe.io/" target="_blank">A-FRAME</a> scene using the <a href="#knn">KNN Classifier</a>, using
+      classes <b><i>forward</i></b
       >, <b><i>backward</i></b
       >, <b><i>left</i></b
       >, <b><i>right</i></b
@@ -189,14 +173,10 @@
       >, and <b><i>down</i></b>
     </p>
     <p>
-      <i
-        >requires <a href="#pink-trombone">Pink Trombone</a> and
-        <a href="#knn">KNN Classifier</a></i
-      >
+      <i>requires <a href="#pink-trombone">Pink Trombone</a> and <a href="#knn">KNN Classifier</a></i>
     </p>
 
     <hr />
-
 
     <h3 id="tts"><a href="/tts" target="_blank">Text to Speech</a></h3>
     <iframe
@@ -211,16 +191,12 @@
     <p>
       <a href="https://youtu.be/MGvPdYo_BAU" target="_blank">YouTube Video</a>
     </p>
-    <p>
-      Converts text to timed phonemes, and then sends the timed phonemes to the
-      Pink Trombone.
-    </p>
+    <p>Converts text to timed phonemes, and then sends the timed phonemes to the Pink Trombone.</p>
     <p>
       <i>requires <a href="#pink-trombone">Pink Trombone</a></i>
     </p>
 
     <hr />
-
 
     <h3 id="lip-sync">
       <a href="/lip-sync" target="_blank">Avatar Lip Sync</a>
@@ -238,20 +214,15 @@
       <a href="https://youtu.be/fYWPzn018-w" target="_blank">YouTube Video</a>
     </p>
     <p>
-      Receives timed phonemes from <a href="#tts">Text to Speech</a> and
-      animates a
+      Receives timed phonemes from <a href="#tts">Text to Speech</a> and animates a
       <a href="https://readyplayer.me/" target="_blank">Ready Player Me</a>
       avatar's mouth.
     </p>
     <p>
-      <i
-        >requires <a href="#pink-trombone">Pink Trombone</a> and
-        <a href="#tts">Text to Speech</a></i
-      >
+      <i>requires <a href="#pink-trombone">Pink Trombone</a> and <a href="#tts">Text to Speech</a></i>
     </p>
 
     <hr />
-
 
     <h3 id="pronunciation">
       <a href="/pronunciation" target="_blank">Pronunciation</a>
@@ -269,19 +240,14 @@
       <a href="https://youtu.be/YhlIgTvHwa0" target="_blank">YouTube Video</a>
     </p>
     <p>
-      Displays the pronunciation of a word, and speaks it aloud as one mouses
-      over the phonemes. One can also speak the phonemes aloud to "read" the
-      word
+      Displays the pronunciation of a word, and speaks it aloud as one mouses over the phonemes. One can also speak the
+      phonemes aloud to "read" the word
     </p>
     <p>
-      <i
-        >requires <a href="#pink-trombone">Pink Trombone</a> and
-        <a href="#knn">KNN Classifier</a></i
-      >
+      <i>requires <a href="#pink-trombone">Pink Trombone</a> and <a href="#knn">KNN Classifier</a></i>
     </p>
 
     <hr />
-
 
     <h3 id="rhyming">
       <a href="/rhyming" target="_blank">Rhyming Dictionary</a>
@@ -306,9 +272,7 @@
     <hr />
     <p>
       created by
-      <a href="https://www.linkedin.com/in/zakaton/" target="_blank"
-        >Zack Qattan</a
-      >
+      <a href="https://www.linkedin.com/in/zakaton/" target="_blank">Zack Qattan</a>
     </p>
   </body>
 </html>
