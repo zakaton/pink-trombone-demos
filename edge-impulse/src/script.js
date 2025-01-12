@@ -52,9 +52,64 @@ const { send } = setupConnection(
   }
 );
 
-const audioContext = new AudioContext();
-gainNode = audioContext.createGain();
-autoResumeAudioContext(audioContext);
+// Sample Rate
+const sampleRates = [8000, 16000];
+let sampleRate = sampleRates[1];
+const sampleRateInput = document.getElementById("sampleRate");
+const sampleRateOptgroup = sampleRateInput.querySelector("optgroup");
+sampleRates.forEach((sampleRate) => {
+  sampleRateOptgroup.appendChild(new Option(sampleRate));
+});
+sampleRateInput.value = sampleRate;
+sampleRateInput.addEventListener("input", (event) => {
+  const newSampleRate = Number(event.target.value);
+  console.log({ newSampleRate });
+  setSampleRate(newSampleRate);
+});
+/** @param {number} newSampleRate */
+function setSampleRate(newSampleRate) {
+  sampleRate = newSampleRate;
+  console.log({ sampleRate });
+  window.dispatchEvent(new Event("sampleRate"));
+  sampleRateInput.value = sampleRate;
+  setUrlParam("sampleRate", sampleRate);
+  setupAudioContext();
+}
+window.addEventListener("loadConfig", () => {
+  if (config.sampleRate) {
+    sampleRateInput.value = config.sampleRate;
+  }
+});
+window.addEventListener("load", () => {
+  if (url.searchParams.has("sampleRate")) {
+    setSampleRate(url.searchParams.get("sampleRate"));
+  }
+});
+
+// Sample Length
+
+// FILL
+
+// Audio Context
+
+/** @type {AudioContext} */
+let audioContext = null;
+async function setupAudioContext() {
+  console.log("setting up audio context");
+  await clearAudioConext();
+  audioContext = new AudioContext({ sampleRate });
+  gainNode = audioContext.createGain();
+  autoResumeAudioContext(audioContext);
+  setupMicrophone();
+}
+async function clearAudioConext() {
+  if (audioContext == null) {
+    return;
+  }
+  await audioContext.close();
+  audioContext = null;
+}
+setupAudioContext();
 
 /** @type {MediaStream|undefined} */
 var mediaStream;
@@ -88,11 +143,19 @@ const getMicrophone = async () => {
   if (!didCheckMicrophonesOnce) {
     updateMicrophoneSelect();
   }
-  mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
+  setupMicrophone();
 
   debugMicrophoneButton.removeAttribute("hidden");
   toggleMicrophoneButton.innerText = "disable microphone";
 };
+
+function setupMicrophone() {
+  mediaStreamSourceNode?.disconnect();
+  if (mediaStream) {
+    mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
+    onIsListeningToMicrophoneUpdate();
+  }
+}
 
 const stopMicrophone = () => {
   if (mediaStream) {
@@ -141,6 +204,14 @@ const debugMicrophoneButton = document.getElementById("debugMicrophone");
 debugMicrophoneButton.addEventListener("click", () => {
   if (mediaStreamSourceNode) {
     isListeningToMicrophone = !isListeningToMicrophone;
+    onIsListeningToMicrophoneUpdate();
+  }
+});
+function onIsListeningToMicrophoneUpdate() {
+  if (!mediaStreamSourceNode) {
+    return;
+  }
+  try {
     if (isListeningToMicrophone) {
       mediaStreamSourceNode.connect(audioContext.destination);
       debugMicrophoneButton.innerText = "stop listening to microphone";
@@ -148,8 +219,10 @@ debugMicrophoneButton.addEventListener("click", () => {
       mediaStreamSourceNode.disconnect(audioContext.destination);
       debugMicrophoneButton.innerText = "listen to microphone";
     }
+  } catch (error) {
+    console.log(error);
   }
-});
+}
 
 // SEARCH PARAMS
 
@@ -508,7 +581,7 @@ window.addEventListener("load", () => {
 const sensors = [
   {
     name: "Microphone",
-    frequencies: [48000],
+    frequencies: sampleRates,
     maxSampleLengthS: 100,
   },
 ];
@@ -736,6 +809,7 @@ let config = {
   apiKey,
   hmacKey,
   deviceId,
+  sampleRate,
 };
 /** @type {object?} */
 let loadedConfig;
@@ -769,6 +843,8 @@ Object.keys(config).forEach((type) => {
       projectId,
       apiKey,
       hmacKey,
+      deviceId,
+      sampleRate,
     };
     saveConfigToLocalStorage();
   });

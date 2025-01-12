@@ -18,6 +18,10 @@
   </style>
 
   <body>
+    <nav>
+      <a href="../../">home</a>
+    </nav>
+
     <h1>Edge Impulse</h1>
 
     <div>
@@ -30,7 +34,7 @@
 
     <h3>Device</h3>
     <div>
-      <label>name <input type="text" id="deviceId" size="30" value="Generic Web Browser" /></label>
+      <label>name <input type="text" id="deviceId" size="30" value="My Headphones" /></label>
     </div>
 
     <h3>Keys</h3>
@@ -53,10 +57,15 @@
       <label>
         interval (ms) <input id="samplingInterval" type="number" min="10" value="20" step="5" max="1000" />
       </label>
-      <label>number of samples <input id="numberOfSamples" type="number" min="1" value="1" step="1" /></label>
       <label>
-        length (ms)
-        <input id="samplingLength" readonly type="number" min="10" value="20" step="5" max="60000" />
+        sample rate
+        <select id="sampleRate">
+          <optgroup label="sample rate"></optgroup>
+        </select>
+      </label>
+      <label>
+        sample length (ms)
+        <input id="sampleLength" type="number" min="1" value="100" step="1" max="5000" />
       </label>
     </div>
 

@@ -43,29 +43,19 @@
     }
   </style>
   <body>
+    <nav>
+      <a href="../../">home</a>
+    </nav>
     <h1>Pronunciation</h1>
-    <input
-      id="word"
-      type="text"
-      autocomplete="off"
-      style="font-size: 72px"
-      placeholder="word to pronounce"
-      size="16"
-    />
+    <input id="word" type="text" autocomplete="off" style="font-size: 72px" placeholder="word to pronounce" size="16" />
     <div id="pronunciations">
       <template>
-        <label class="pronunciation"
-          ><span></span><input type="radio" name="pronunciation"
-        /></label>
+        <label class="pronunciation"><span></span><input type="radio" name="pronunciation" /></label>
       </template>
     </div>
 
     <label
-      >play phoneme on hover
-      <input
-        type="checkbox"
-        checked
-        oninput="playPhonemeOnHover = event.target.checked"
+      >play phoneme on hover <input type="checkbox" checked oninput="playPhonemeOnHover = event.target.checked"
     /></label>
 
     <div id="phonemes"></div>
