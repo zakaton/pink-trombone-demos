@@ -82,13 +82,39 @@ window.addEventListener("loadConfig", () => {
 });
 window.addEventListener("load", () => {
   if (url.searchParams.has("sampleRate")) {
-    setSampleRate(url.searchParams.get("sampleRate"));
+    setSampleRate(Number(url.searchParams.get("sampleRate")));
   }
 });
 
 // Sample Length
 
-// FILL
+let sampleLength = 100;
+const sampleLengthInput = document.getElementById("sampleLength");
+sampleLengthInput.value = sampleLength;
+sampleLengthInput.addEventListener("input", (event) => {
+  const newSampleLength = Number(event.target.value);
+  console.log({ newSampleLength });
+  setSampleLength(newSampleLength);
+});
+/** @param {number} newSampleLength */
+function setSampleLength(newSampleLength) {
+  sampleLength = newSampleLength;
+  console.log({ sampleLength });
+  window.dispatchEvent(new Event("sampleLength"));
+  sampleLengthInput.value = sampleLength;
+  setUrlParam("sampleLength", sampleLength);
+  setupAudioContext();
+}
+window.addEventListener("loadConfig", () => {
+  if (config.sampleLength) {
+    sampleLengthInput.value = config.sampleLength;
+  }
+});
+window.addEventListener("load", () => {
+  if (url.searchParams.has("sampleLength")) {
+    setSampleLength(Number(url.searchParams.get("sampleLength")));
+  }
+});
 
 // Audio Context
 
@@ -553,12 +579,13 @@ async function parseRemoteManagementMessage(event) {
   return null;
 }
 
-let deviceId = "";
+let deviceId = "My Headphones";
 /** @type {HTMLInputElement} */
 const deviceIdInput = document.getElementById("deviceId");
 deviceIdInput.addEventListener("input", (event) => {
   setDeviceId(event.target.value);
 });
+deviceIdInput.value = deviceId;
 /** @param {string} newDeviceId */
 function setDeviceId(newDeviceId) {
   deviceId = newDeviceId;
@@ -578,14 +605,6 @@ window.addEventListener("load", () => {
   }
 });
 
-const sensors = [
-  {
-    name: "Microphone",
-    frequencies: sampleRates,
-    maxSampleLengthS: 100,
-  },
-];
-
 let deviceType = navigator.userAgent;
 
 function remoteManagementHelloMessage() {
@@ -596,7 +615,13 @@ function remoteManagementHelloMessage() {
       deviceId,
       deviceType,
       connection: "ip",
-      sensors,
+      sensors: [
+        {
+          name: "Microphone",
+          frequencies: sampleRates,
+          maxSampleLengthS: sampleLength,
+        },
+      ],
       supportsSnapshotStreaming: false,
     },
   };
@@ -617,10 +642,14 @@ toggleRemoteManagementConnectionButton.addEventListener("click", () => {
     toggleRemoteManagementConnectionButton.innerText = "disconnecting...";
     toggleRemoteManagementConnectionButton.disabled = true;
     deviceIdInput.disabled = true;
+    sampleRateInput.disabled = true;
+    sampleLengthInput.disabled = true;
   } else {
     connectToRemoteManagement();
     toggleRemoteManagementConnectionButton.innerText = "connecting...";
     deviceIdInput.disabled = false;
+    sampleRateInput.disabled = false;
+    sampleLengthInput.disabled = false;
   }
 });
 
@@ -810,6 +839,7 @@ let config = {
   hmacKey,
   deviceId,
   sampleRate,
+  sampleLength,
 };
 /** @type {object?} */
 let loadedConfig;
@@ -845,6 +875,7 @@ Object.keys(config).forEach((type) => {
       hmacKey,
       deviceId,
       sampleRate,
+      sampleLength,
     };
     saveConfigToLocalStorage();
   });
