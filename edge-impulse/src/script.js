@@ -67,13 +67,17 @@ sampleRateInput.addEventListener("input", (event) => {
   setSampleRate(newSampleRate);
 });
 /** @param {number} newSampleRate */
-function setSampleRate(newSampleRate) {
+async function setSampleRate(newSampleRate) {
   sampleRate = newSampleRate;
+  sampleRateInput.value = sampleRate;
   console.log({ sampleRate });
   window.dispatchEvent(new Event("sampleRate"));
   sampleRateInput.value = sampleRate;
+  setSamplingInterval(1000 / sampleRate);
   setUrlParam("sampleRate", sampleRate);
-  setupAudioContext();
+  if (audioContext.sampleRate != sampleRate) {
+    await setupAudioContext();
+  }
 }
 window.addEventListener("loadConfig", () => {
   if (config.sampleRate) {
@@ -170,6 +174,7 @@ const getMicrophone = async () => {
     updateMicrophoneSelect();
   }
   setupMicrophone();
+  updateToggleSamplingButton();
 
   debugMicrophoneButton.removeAttribute("hidden");
   toggleMicrophoneButton.innerText = "disable microphone";
@@ -192,6 +197,7 @@ const stopMicrophone = () => {
     isListeningToMicrophone = false;
     debugMicrophoneButton.setAttribute("hidden", "");
     toggleMicrophoneButton.innerText = "enable microphone";
+    updateToggleSamplingButton();
   }
 };
 
@@ -454,6 +460,135 @@ async function getHmacKey() {
   });
 }
 
+// SAMPLING
+
+let isSampling = false;
+/** @param {boolean} newIsSampling */
+function setIsSampling(newIsSampling) {
+  isSampling = newIsSampling;
+  console.log({ isSampling });
+  window.dispatchEvent(new Event("isSampling"));
+}
+
+/** @type {HTMLButtonElement} */
+const toggleSamplingButton = document.getElementById("toggleSampling");
+toggleSamplingButton.addEventListener("click", () => {
+  if (isSampling) {
+    stopCollectingData();
+  } else {
+    sampleAndUpload();
+  }
+});
+
+function updateToggleSamplingButton() {
+  const enabled = isRemoteManagementConnected() && label.length > 0 && !isSampling && mediaStream;
+  toggleSamplingButton.disabled = !enabled;
+  toggleSamplingButton.innerText = isSampling ? "sampling..." : "start sampling";
+}
+
+window.addEventListener("load", () => {
+  ["isSampling", "remoteManagementConnection", "label"].forEach((eventType) => {
+    window.addEventListener(eventType, () => {
+      updateToggleSamplingButton();
+    });
+  });
+});
+
+async function sampleAndUpload() {
+  setIsSampling(true);
+
+  const data = await collectData();
+
+  sendRemoteManagementMessage?.({ sampleFinished: true });
+  setIsSampling(false);
+
+  sendRemoteManagementMessage?.({ sampleUploading: true });
+  await uploadData(data);
+}
+
+/** @type {MediaRecorder} */
+let mediaRecorder;
+async function collectData() {
+  if (!mediaStream) {
+    console.log("no mediaStream");
+    return;
+  }
+
+  const promise = new Promise((resolve) => {
+    mediaRecorder = new MediaRecorder(mediaStream);
+    let audioChunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      console.log("stopped recording");
+      const blob = new Blob(audioChunks, { type: "audio/wav" });
+      audioChunks = [];
+      console.log("blob", blob);
+      resolve(blob);
+      mediaRecorder = null;
+    };
+
+    mediaRecorder.start();
+    window.setTimeout(() => {
+      if (mediaRecorder?.state == "recording") {
+        mediaRecorder.stop();
+      }
+    }, sampleLength);
+  });
+
+  const blob = await promise;
+  return blob;
+}
+
+async function stopCollectingData() {
+  if (!isSampling) {
+    return;
+  }
+  setIsSampling(false);
+  if (!mediaRecorder) {
+    return;
+  }
+  mediaRecorder.stop();
+}
+
+// LABEL
+
+/** @type {string} */
+let label;
+/** @type {HTMLInputElement} */
+const labelInput = document.getElementById("label");
+labelInput.addEventListener("input", (event) => {
+  setLabel(event.target.value);
+});
+/** @param {string} newLabel */
+function setLabel(newLabel) {
+  label = newLabel;
+  console.log({ label });
+  labelInput.value = label;
+  window.dispatchEvent(new Event("label"));
+}
+setLabel("idle");
+
+// PATH
+/** @type {string} */
+let path;
+/** @type {HTMLInputElement} */
+const pathInput = document.getElementById("path");
+pathInput.addEventListener("input", (event) => {
+  setPath(event.target.value);
+});
+/** @param {string} newPath */
+function setPath(newPath) {
+  path = newPath;
+  console.log({ path });
+  pathInput.value = path;
+  window.dispatchEvent(new Event("path"));
+}
+setPath("/api/training/data");
+
 // REMOTE MANAGEMENT
 
 /**
@@ -534,39 +669,24 @@ async function connectToRemoteManagement() {
       const samplingDetails = data.sample;
       console.log("samplingDetails", samplingDetails);
 
-      return;
-      const numberOfSamples = samplingDetails.length / samplingDetails.interval;
-      setNumberOfSamples(numberOfSamples);
-      setSensorTypes(sensorTypes);
-      setSamplingInterval(samplingDetails.interval);
-      setSamplingLength(samplingDetails.length);
+      const newSampleRate = 1000 / samplingDetails.interval;
+      await setSampleRate(newSampleRate);
+      setSampleLength(samplingDetails.length);
       setLabel(samplingDetails.label);
       setHmacKey(samplingDetails.hmacKey);
       setPath(samplingDetails.path);
 
       sampleAndUpload();
-
-      // /** @type {SensorConfiguration} */
-      // const sensorConfiguration = {};
-      // sensorTypes.forEach((sensorType) => {
-      //     sensorConfiguration[sensorType] = samplingDetails.interval;
-      // });
-      // console.log("sensorConfiguration", sensorConfiguration);
-      // device.setSensorConfiguration(sensorConfiguration);
-
-      // setIsSampling(true);
-
-      // const deviceData = await collectData(sensorTypes, numberOfSamples);
-      // await device.clearSensorConfiguration();
-      // console.log("deviceData", deviceData);
-
-      // sendRemoteManagementMessage?.({ sampleFinished: true });
-      // setIsSampling(false);
-
-      // sendRemoteManagementMessage?.({ sampleUploading: true });
-      // await uploadData(samplingDetails, sensorTypes, deviceData);
     }
   });
+}
+
+/** @type {number} */
+let samplingInterval;
+/** @param {number} newSamplingInterval */
+function setSamplingInterval(newSamplingInterval) {
+  console.log({ newSamplingInterval });
+  samplingInterval = newSamplingInterval;
 }
 
 async function parseRemoteManagementMessage(event) {
@@ -607,6 +727,15 @@ window.addEventListener("load", () => {
 
 let deviceType = navigator.userAgent;
 
+const getSensors = () => [
+  {
+    name: "Microphone",
+    frequencies: sampleRates,
+    maxSampleLengthS: sampleLength,
+    units: "wav",
+  },
+];
+
 function remoteManagementHelloMessage() {
   const message = {
     hello: {
@@ -615,13 +744,7 @@ function remoteManagementHelloMessage() {
       deviceId,
       deviceType,
       connection: "ip",
-      sensors: [
-        {
-          name: "Microphone",
-          frequencies: sampleRates,
-          maxSampleLengthS: sampleLength,
-        },
-      ],
+      sensors: getSensors(),
       supportsSnapshotStreaming: false,
     },
   };
@@ -644,12 +767,14 @@ toggleRemoteManagementConnectionButton.addEventListener("click", () => {
     deviceIdInput.disabled = true;
     sampleRateInput.disabled = true;
     sampleLengthInput.disabled = true;
+    toggleSamplingButton.disabled = false;
   } else {
     connectToRemoteManagement();
     toggleRemoteManagementConnectionButton.innerText = "connecting...";
     deviceIdInput.disabled = false;
     sampleRateInput.disabled = false;
     sampleLengthInput.disabled = false;
+    toggleSamplingButton.disabled = true;
   }
 });
 
@@ -681,72 +806,28 @@ function setReconnectRemoteManagementOnDisconnection(newReconnectRemoteManagemen
 
 // DATA UPLOAD
 
-const emptySignature = Array(64).fill("0").join("");
+async function blobToAudioBuffer(blob) {
+  const arrayBuffer = await blob.arrayBuffer();
+  return audioContext.decodeAudioData(arrayBuffer);
+}
 
-// FIX
-/**
- * @param {BS.ContinuousSensorType[]} sensorTypes
- * @param {DeviceData} deviceData
- */
-async function uploadData(sensorTypes, deviceData) {
-  const sensors = sensorTypes.flatMap((sensorType) => {
-    let names = [];
-    let units;
-    switch (sensorType) {
-      // FILL
-      case "linearAcceleration":
-      case "gyroscope":
-      case "magnetometer":
-        names = ["x", "y", "z"].map((component) => `${sensorType}.${component}`);
-        switch (sensorType) {
-          case "linearAcceleration":
-            units = "g/s";
-            break;
-          case "gyroscope":
-            units = "deg/s";
-            break;
-          case "magnetometer":
-            units = "uT";
-            break;
-        }
-        break;
-      default:
-        throw `uncaught sensorType ${sensorType}`;
-    }
-
-    return names.map((name) => ({
-      name,
-      units,
-    }));
-  });
-
-  console.log("sensors", sensors);
-
-  const values = [];
-  for (let sampleIndex = 0; sampleIndex < numberOfSamples; sampleIndex++) {
-    const value = [];
-
-    sensorTypes.forEach((sensorType) => {
-      const scalar = scalars[sensorType];
-      const sensorSamples = deviceData[sensorType];
-
-      switch (sensorType) {
-        case "linearAcceleration":
-        case "gyroscope":
-        case "magnetometer":
-          ["x", "y", "z"].forEach((component) => {
-            value.push(sensorSamples[sampleIndex][component] * scalar);
-          });
-          break;
-        default:
-          throw `uncaught sensorType ${sensorType}`;
-      }
-    });
-
-    values.push(value);
+function extractPCMValues(audioBuffer) {
+  const pcmData = [];
+  const channelData = audioBuffer.getChannelData(0);
+  for (let i = 0; i < channelData.length; i++) {
+    pcmData.push(channelData[i] * 2 ** 16);
   }
+  return pcmData;
+}
 
-  console.log("values", values);
+/** @param {Blob} blob */
+async function uploadData(blob) {
+  console.log("Uploading blob", blob);
+
+  const audioBuffer = await blobToAudioBuffer(blob);
+  console.log("audioBuffer", audioBuffer);
+  const audioValues = extractPCMValues(audioBuffer);
+  console.log("audioValues", audioValues);
 
   const data = {
     protected: {
@@ -759,31 +840,37 @@ async function uploadData(sensorTypes, deviceData) {
       device_name: deviceId,
       device_type: deviceType,
       interval_ms: samplingInterval,
-      sensors,
-      values,
+      sensors: getSensors(),
+      values: audioValues,
     },
   };
 
-  console.log("data", data);
+  console.log("Message before signing", data);
 
   data.signature = await createSignature(hmacKey, data);
-
-  console.log("signature", data.signature);
+  console.log("Signature generated", data.signature);
 
   const formData = new FormData();
   formData.append("message", new Blob([JSON.stringify(data)], { type: "application/json" }), "message.json");
 
+  console.log("Form data prepared", formData);
+
   return new Promise((resolve, reject) => {
-    let xml = new XMLHttpRequest();
+    const xml = new XMLHttpRequest();
     xml.onload = () => {
       if (xml.status === 200) {
+        console.log("Upload successful", xml.responseText);
         resolve(xml.responseText);
       } else {
-        reject("Failed to upload (status code " + xml.status + "): " + xml.responseText);
+        console.error("Upload failed", xml.status, xml.responseText);
+        reject(`Failed to upload (status code ${xml.status}): ${xml.responseText}`);
       }
     };
-    xml.onerror = () => reject(undefined);
-    xml.open("post", ingestionApi + path);
+    xml.onerror = () => {
+      console.error("Network error during upload");
+      reject("Network error");
+    };
+    xml.open("POST", `${ingestionApi}${path}`);
     xml.setRequestHeader("x-api-key", apiKey);
     xml.setRequestHeader("x-file-name", encodeLabel(label));
     xml.send(formData);
@@ -828,6 +915,8 @@ async function createSignature(hmacKey, data) {
   const b = new Uint8Array(signature);
   return Array.prototype.map.call(b, (x) => ("00" + x.toString(16)).slice(-2)).join("");
 }
+
+const emptySignature = Array(64).fill("0").join("");
 
 // EDGE IMPULSE CONFIG
 

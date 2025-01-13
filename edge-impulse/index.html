@@ -55,24 +55,19 @@
       <label>path <input id="path" type="text" readonly /></label>
       <label>label <input id="label" type="text" /></label>
       <label>
-        interval (ms) <input id="samplingInterval" type="number" min="10" value="20" step="5" max="1000" />
-      </label>
-      <label>
         sample rate
         <select id="sampleRate">
           <optgroup label="sample rate"></optgroup>
         </select>
       </label>
       <label>
-        max sample length (ms)
+        sample length (ms)
         <input id="sampleLength" type="number" min="1" value="100" step="1" max="5000" />
       </label>
     </div>
 
     <button id="getHmacKey" disabled>get hmacKey</button>
     <button id="toggleSampling" disabled>start sampling</button>
-
-    <button id="addData" disabled>add data</button>
   </body>
 
   <script src="/src/utils.js"></script>
