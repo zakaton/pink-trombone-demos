@@ -68,9 +68,17 @@
 
     <button id="getHmacKey" disabled>get hmacKey</button>
     <button id="toggleSampling" disabled>start sampling</button>
+
+    <h3>Classification</h3>
+    <button id="classify" disabled>classify</button>
+    <label>auto classify <input id="autoClassify" type="checkbox" /></label>
+    <h4 id="topClassification"></h4>
+    <pre id="classifierResultsPre"></pre>
   </body>
 
   <script src="/src/utils.js"></script>
+  <script src="/edge-impulse/src/edge-impulse-standalone.js"></script>
+  <script src="/edge-impulse/src/run-impulse.js"></script>
 
   <script src="/edge-impulse/src/script.js"></script>
 </html>

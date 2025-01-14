@@ -175,6 +175,7 @@ const getMicrophone = async () => {
   }
   setupMicrophone();
   updateToggleSamplingButton();
+  updateClassifyButton();
 
   debugMicrophoneButton.removeAttribute("hidden");
   toggleMicrophoneButton.innerText = "disable microphone";
@@ -198,6 +199,7 @@ const stopMicrophone = () => {
     debugMicrophoneButton.setAttribute("hidden", "");
     toggleMicrophoneButton.innerText = "enable microphone";
     updateToggleSamplingButton();
+    updateClassifyButton();
   }
 };
 
@@ -508,6 +510,7 @@ async function sampleAndUpload() {
 
 /** @type {MediaRecorder} */
 let mediaRecorder;
+/** @returns {Promise<Blob>} */
 async function collectData() {
   if (!mediaStream) {
     console.log("no mediaStream");
@@ -518,6 +521,16 @@ async function collectData() {
     mediaRecorder = new MediaRecorder(mediaStream);
     let audioChunks = [];
 
+    mediaRecorder.onstart = (event) => {
+      console.log(event);
+    };
+    mediaRecorder.onerror = (event) => {
+      console.log(event);
+    };
+    mediaRecorder.onpause = (event) => {
+      console.log(event);
+    };
+
     mediaRecorder.ondataavailable = (event) => {
       audioChunks.push(event.data);
     };
@@ -525,7 +538,6 @@ async function collectData() {
     mediaRecorder.onstop = async () => {
       console.log("stopped recording");
       const blob = new Blob(audioChunks, { type: "audio/wav" });
-      audioChunks = [];
       console.log("blob", blob);
       resolve(blob);
       mediaRecorder = null;
@@ -740,7 +752,7 @@ function remoteManagementHelloMessage() {
   const message = {
     hello: {
       version: 3,
-      apiKey: apiKey,
+      apiKey,
       deviceId,
       deviceType,
       connection: "ip",
@@ -947,7 +959,10 @@ function loadConfigFromLocalStorage() {
 loadConfigFromLocalStorage();
 
 function saveConfigToLocalStorage() {
-  const isConfigDifferent = !loadedConfig || Object.entries(loadedConfig).some(([key, value]) => config[key] != value);
+  const isConfigDifferent =
+    !loadedConfig ||
+    Object.keys(loadedConfig).length != Object.keys(config).length ||
+    Object.entries(loadedConfig).some(([key, value]) => config[key] != value);
   if (!isConfigDifferent) {
     return;
   }
@@ -968,4 +983,80 @@ Object.keys(config).forEach((type) => {
     };
     saveConfigToLocalStorage();
   });
+});
+
+// CLASSIFICATION
+/** @type {EdgeImpulseClassifier} */
+let classifier;
+let classifierProject;
+let classifierProperties;
+let isClassifierLoaded = false;
+(async () => {
+  try {
+    classifier = new EdgeImpulseClassifier();
+    await classifier.init();
+
+    classifierProject = classifier.getProjectInfo();
+    console.log("classifierProject", classifierProject);
+    classifierProperties = classifier.getProperties();
+    console.log("classifierProperties", classifierProperties);
+    isClassifierLoaded = true;
+    setSampleRate(classifierProperties.frequency);
+    updateClassifyButton();
+    setSampleLength((1100 * classifierProperties.frame_sample_count) / classifierProperties.frequency);
+  } catch (error) {
+    console.log("error loading classifier");
+  }
+})();
+
+const classifyButton = document.getElementById("classify");
+classifyButton.addEventListener("click", () => {
+  classify();
+});
+let isClassifying = false;
+function setIsClassifying(newIsClassifying) {
+  isClassifying = newIsClassifying;
+  updateClassifyButton();
+}
+async function classify() {
+  setIsClassifying(true);
+  const blob = await collectData();
+  const audioBuffer = await blobToAudioBuffer(blob);
+  console.log("audioBuffer", audioBuffer);
+  const audioValues = extractPCMValues(audioBuffer);
+  console.log("audioValues", audioValues);
+  const results = classifier.classify(audioValues, true);
+  console.log("results", results);
+  classifierResultsPre.textContent = JSON.stringify(results, null, 2);
+  var highestResultIndex = -1;
+  var highestResultValue = -Infinity;
+  var highestResultLabel = "";
+  results.results.forEach(({ label, value }, index) => {
+    if (value > highestResultValue) {
+      highestResultValue = value;
+      highestResultIndex = index;
+      highestResultLabel = label;
+    }
+  });
+  topClassification.innerText = highestResultLabel;
+  setIsClassifying(false);
+  if (autoClassify) {
+    classify();
+  }
+}
+
+function updateClassifyButton() {
+  const enabled = isClassifierLoaded && mediaStream && !isClassifying;
+  classifyButton.disabled = !enabled;
+  classifyButton.innerText = isClassifying ? "classifying" : "classify";
+}
+
+/** @type {HTMLPreElement} */
+const classifierResultsPre = document.getElementById("classifierResultsPre");
+const topClassification = document.getElementById("topClassification");
+
+let autoClassify = false;
+const autoClassifyCheckbox = document.getElementById("autoClassify");
+autoClassifyCheckbox.addEventListener("input", (event) => {
+  autoClassify = event.target.checked;
 });
