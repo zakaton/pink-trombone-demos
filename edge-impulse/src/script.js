@@ -107,7 +107,6 @@ function setSampleLength(newSampleLength) {
   window.dispatchEvent(new Event("sampleLength"));
   sampleLengthInput.value = sampleLength;
   setUrlParam("sampleLength", sampleLength);
-  setupAudioContext();
 }
 window.addEventListener("loadConfig", () => {
   if (config.sampleLength) {
@@ -125,12 +124,13 @@ window.addEventListener("load", () => {
 /** @type {AudioContext} */
 let audioContext = null;
 async function setupAudioContext() {
-  console.log("setting up audio context");
+  console.trace("setting up audio context");
   await clearAudioConext();
   audioContext = new AudioContext({ sampleRate });
   gainNode = audioContext.createGain();
   autoResumeAudioContext(audioContext);
   setupMicrophone();
+  setupScriptProcessor();
 }
 async function clearAudioConext() {
   if (audioContext == null) {
@@ -141,10 +141,19 @@ async function clearAudioConext() {
 }
 setupAudioContext();
 
+async function setupScriptProcessor() {
+  if (mediaStreamScriptProcessor) {
+    mediaStreamScriptProcessor.disconnect();
+  }
+  mediaStreamScriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+}
+
 /** @type {MediaStream|undefined} */
 var mediaStream;
 /** @type {MediaStreamAudioSourceNode|undefined} */
 var mediaStreamSourceNode;
+/** @type {ScriptProcessorNode|undefined} */
+var mediaStreamScriptProcessor;
 
 const toggleMicrophoneButton = document.getElementById("toggleMicrophone");
 toggleMicrophoneButton.addEventListener("click", async () => {
@@ -184,6 +193,9 @@ const getMicrophone = async () => {
 function setupMicrophone() {
   mediaStreamSourceNode?.disconnect();
   if (mediaStream) {
+    if (mediaStreamSourceNode) {
+      mediaStreamSourceNode.disconnect();
+    }
     mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
     onIsListeningToMicrophoneUpdate();
   }
@@ -476,7 +488,7 @@ function setIsSampling(newIsSampling) {
 const toggleSamplingButton = document.getElementById("toggleSampling");
 toggleSamplingButton.addEventListener("click", () => {
   if (isSampling) {
-    stopCollectingData();
+    // TODO
   } else {
     sampleAndUpload();
   }
@@ -499,19 +511,125 @@ window.addEventListener("load", () => {
 async function sampleAndUpload() {
   setIsSampling(true);
 
-  const data = await collectData();
+  const audioData = await collectSamples(classifierProperties.frame_sample_count);
+  const audioValues = convertFloat32ToPCM(combineFloat32Arrays(audioData));
+  const values = Array.from(audioValues);
+  console.log("values", values);
 
   sendRemoteManagementMessage?.({ sampleFinished: true });
   setIsSampling(false);
 
   sendRemoteManagementMessage?.({ sampleUploading: true });
-  await uploadData(data);
+  await uploadData(values);
+}
+
+/**
+ * @param {number?} numberOfSamples
+ * @returns {Promise<Float32Array[]>}
+ */
+async function collectSamples(numberOfSamples) {
+  if (!mediaStream) {
+    console.log("no mediaStream");
+    return;
+  }
+
+  if (numberOfSamples == undefined) {
+    numberOfSamples = (sampleLength / 1000) * sampleRate;
+  }
+
+  console.log({ numberOfSamples });
+
+  const audioData = [];
+  let sampleCount = 0;
+
+  const promise = new Promise((resolve, reject) => {
+    mediaStreamScriptProcessor.onaudioprocess = (event) => {
+      const inputBuffer = event.inputBuffer.getChannelData(0);
+      audioData.push(new Float32Array(inputBuffer));
+      sampleCount += inputBuffer.length;
+      console.log({ sampleCount });
+      if (sampleCount >= numberOfSamples) {
+        const overflow = sampleCount - numberOfSamples;
+        audioData[audioData.length - 1] = inputBuffer.slice(0, inputBuffer.length - overflow);
+        mediaStreamScriptProcessor.disconnect();
+        mediaStreamSourceNode.disconnect(mediaStreamScriptProcessor);
+        //resolve(createWavBlob(audioData, audioContext.sampleRate));
+        resolve(audioData);
+      }
+    };
+
+    mediaStreamSourceNode.onerror = (error) => {
+      mediaStreamScriptProcessor.disconnect();
+      mediaStreamSourceNode.disconnect(mediaStreamScriptProcessor);
+      reject(error);
+    };
+
+    mediaStreamSourceNode.connect(mediaStreamScriptProcessor);
+    mediaStreamScriptProcessor.connect(audioContext.destination);
+  });
+
+  const blob = await promise;
+  return blob;
+}
+
+/**
+ * @param {number?} numberOfSamples
+ * @returns {Promise<Blob>}
+ */
+async function getWav(numberOfSamples) {
+  const audioData = await collectSamples(numberOfSamples);
+  return createWavBlob(audioData, audioContext.sampleRate);
+}
+
+/**
+ * Converts recorded audio data to a WAV Blob.
+ * @param {Float32Array[]} audioData - The recorded audio data.
+ * @param {number} sampleRate - The sample rate of the audio.
+ * @returns {Blob} - A Blob containing the WAV file.
+ */
+function createWavBlob(audioData, sampleRate) {
+  const totalSamples = audioData.reduce((sum, buffer) => sum + buffer.length, 0);
+  const wavBuffer = new ArrayBuffer(44 + totalSamples * 2);
+  const view = new DataView(wavBuffer);
+
+  // Write WAV header
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  writeString(0, "RIFF"); // ChunkID
+  view.setUint32(4, 36 + totalSamples * 2, true); // ChunkSize
+  writeString(8, "WAVE"); // Format
+  writeString(12, "fmt "); // Subchunk1ID
+  view.setUint32(16, 16, true); // Subchunk1Size (PCM)
+  view.setUint16(20, 1, true); // AudioFormat (PCM)
+  view.setUint16(22, 1, true); // NumChannels
+  view.setUint32(24, sampleRate, true); // SampleRate
+  view.setUint32(28, sampleRate * 2, true); // ByteRate
+  view.setUint16(32, 2, true); // BlockAlign
+  view.setUint16(34, 16, true); // BitsPerSample
+  writeString(36, "data"); // Subchunk2ID
+  view.setUint32(40, totalSamples * 2, true); // Subchunk2Size
+
+  // Write audio data
+  let offset = 44;
+  audioData.forEach((buffer) => {
+    for (let i = 0; i < buffer.length; i++) {
+      const sample = Math.max(-1, Math.min(1, buffer[i])); // Clamp to [-1, 1]
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += 2;
+    }
+  });
+
+  return new Blob([view], { type: "audio/wav" });
 }
 
 /** @type {MediaRecorder} */
 let mediaRecorder;
 /** @returns {Promise<Blob>} */
-async function collectData() {
+async function collectDataWithMediaRecorder() {
   if (!mediaStream) {
     console.log("no mediaStream");
     return;
@@ -555,17 +673,6 @@ async function collectData() {
   return blob;
 }
 
-async function stopCollectingData() {
-  if (!isSampling) {
-    return;
-  }
-  setIsSampling(false);
-  if (!mediaRecorder) {
-    return;
-  }
-  mediaRecorder.stop();
-}
-
 // LABEL
 
 /** @type {string} */
@@ -582,7 +689,7 @@ function setLabel(newLabel) {
   labelInput.value = label;
   window.dispatchEvent(new Event("label"));
 }
-setLabel("idle");
+setLabel("silence");
 
 // PATH
 /** @type {string} */
@@ -827,19 +934,14 @@ function extractPCMValues(audioBuffer) {
   const pcmData = [];
   const channelData = audioBuffer.getChannelData(0);
   for (let i = 0; i < channelData.length; i++) {
-    pcmData.push(channelData[i] * 2 ** 16);
+    pcmData.push(channelData[i]);
   }
   return pcmData;
 }
 
-/** @param {Blob} blob */
-async function uploadData(blob) {
-  console.log("Uploading blob", blob);
-
-  const audioBuffer = await blobToAudioBuffer(blob);
-  console.log("audioBuffer", audioBuffer);
-  const audioValues = extractPCMValues(audioBuffer);
-  console.log("audioValues", audioValues);
+/** @param {number[]} values */
+async function uploadData(values) {
+  console.log("Uploading values", values);
 
   const data = {
     protected: {
@@ -853,7 +955,7 @@ async function uploadData(blob) {
       device_type: deviceType,
       interval_ms: samplingInterval,
       sensors: getSensors(),
-      values: audioValues,
+      values,
     },
   };
 
@@ -1003,7 +1105,7 @@ let isClassifierLoaded = false;
     isClassifierLoaded = true;
     setSampleRate(classifierProperties.frequency);
     updateClassifyButton();
-    setSampleLength((1100 * classifierProperties.frame_sample_count) / classifierProperties.frequency);
+    setSampleLength((1000 * classifierProperties.frame_sample_count) / classifierProperties.frequency);
   } catch (error) {
     console.log("error loading classifier");
   }
@@ -1018,13 +1120,41 @@ function setIsClassifying(newIsClassifying) {
   isClassifying = newIsClassifying;
   updateClassifyButton();
 }
+/**
+ * @param {Float32Array[]} float32Arrays
+ * @returns {Float32Array}
+ */
+function combineFloat32Arrays(float32Arrays) {
+  const totalLength = float32Arrays.reduce((sum, arr) => sum + arr.length, 0);
+  const combinedArray = new Float32Array(totalLength);
+  let offset = 0;
+  for (const arr of float32Arrays) {
+    combinedArray.set(arr, offset);
+    offset += arr.length;
+  }
+
+  return combinedArray;
+}
+/**
+ * @param {Float32Array} float32Array
+ * @returns {Int16Array}
+ */
+function convertFloat32ToPCM(float32Array) {
+  const pcmArray = new Int16Array(float32Array.length);
+
+  for (let i = 0; i < float32Array.length; i++) {
+    const clampedValue = Math.max(-1, Math.min(1, float32Array[i]));
+
+    pcmArray[i] = clampedValue < 0 ? clampedValue * 0x8000 : clampedValue * 0x7fff;
+  }
+
+  return pcmArray;
+}
 async function classify() {
   setIsClassifying(true);
-  const blob = await collectData();
-  const audioBuffer = await blobToAudioBuffer(blob);
-  console.log("audioBuffer", audioBuffer);
-  const audioValues = extractPCMValues(audioBuffer);
-  console.log("audioValues", audioValues);
+  const audioData = await collectSamples(classifierProperties.frame_sample_count);
+  const audioValues = convertFloat32ToPCM(combineFloat32Arrays(audioData));
+  console.log(audioValues);
   const results = classifier.classify(audioValues, true);
   console.log("results", results);
   classifierResultsPre.textContent = JSON.stringify(results, null, 2);
