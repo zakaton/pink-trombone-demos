@@ -197,6 +197,7 @@ function setupMicrophone() {
       mediaStreamSourceNode.disconnect();
     }
     mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
+    mediaStreamSourceNode.connect(gainNode);
     onIsListeningToMicrophoneUpdate();
   }
 }
@@ -259,10 +260,10 @@ function onIsListeningToMicrophoneUpdate() {
   }
   try {
     if (isListeningToMicrophone) {
-      mediaStreamSourceNode.connect(audioContext.destination);
+      gainNode.connect(audioContext.destination);
       debugMicrophoneButton.innerText = "stop listening to microphone";
     } else {
-      mediaStreamSourceNode.disconnect(audioContext.destination);
+      gainNode.disconnect(audioContext.destination);
       debugMicrophoneButton.innerText = "listen to microphone";
     }
   } catch (error) {
@@ -508,10 +509,11 @@ window.addEventListener("load", () => {
   });
 });
 
+// https://github.com/edgeimpulse/mobile-client/blob/b773b3b00894ddfde2493aece7d5c794e7cc02f8/public/smartphone/recorder.js#L335
 async function sampleAndUpload() {
   setIsSampling(true);
 
-  const audioData = await collectSamples(classifierProperties.frame_sample_count);
+  const audioData = await collectSamples();
   const audioValues = convertFloat32ToPCM(combineFloat32Arrays(audioData));
   const values = Array.from(audioValues);
   console.log("values", values);
@@ -552,7 +554,7 @@ async function collectSamples(numberOfSamples) {
         const overflow = sampleCount - numberOfSamples;
         audioData[audioData.length - 1] = inputBuffer.slice(0, inputBuffer.length - overflow);
         mediaStreamScriptProcessor.disconnect();
-        mediaStreamSourceNode.disconnect(mediaStreamScriptProcessor);
+        gainNode.disconnect(mediaStreamScriptProcessor);
         //resolve(createWavBlob(audioData, audioContext.sampleRate));
         resolve(audioData);
       }
@@ -560,11 +562,11 @@ async function collectSamples(numberOfSamples) {
 
     mediaStreamSourceNode.onerror = (error) => {
       mediaStreamScriptProcessor.disconnect();
-      mediaStreamSourceNode.disconnect(mediaStreamScriptProcessor);
+      gainNode.disconnect(mediaStreamScriptProcessor);
       reject(error);
     };
 
-    mediaStreamSourceNode.connect(mediaStreamScriptProcessor);
+    gainNode.connect(mediaStreamScriptProcessor);
     mediaStreamScriptProcessor.connect(audioContext.destination);
   });
 
@@ -677,8 +679,23 @@ async function collectDataWithMediaRecorder() {
 
 /** @type {string} */
 let label;
-/** @type {HTMLInputElement} */
+/** @type {HTMLSelectElement} */
 const labelInput = document.getElementById("label");
+const vowelLabelsOptgroup = document.getElementById("vowelLabels");
+const voicedConsonantLabelsOptgroup = document.getElementById("voicedConsonantLabels");
+const voicelessConsonantLabelsOptgroup = document.getElementById("voicelessConsonantLabels");
+Object.entries(phonemes).forEach(([phoneme, value]) => {
+  const option = new Option(`${phoneme} (${value.example})`, phoneme);
+  if (value.type == "vowel") {
+    vowelLabelsOptgroup.appendChild(option);
+  } else {
+    if (value.voiced) {
+      voicedConsonantLabelsOptgroup.appendChild(option);
+    } else {
+      voicelessConsonantLabelsOptgroup.appendChild(option);
+    }
+  }
+});
 labelInput.addEventListener("input", (event) => {
   setLabel(event.target.value);
 });
@@ -1093,6 +1110,13 @@ let classifier;
 let classifierProject;
 let classifierProperties;
 let isClassifierLoaded = false;
+/**
+ * @typedef {object} EdgeImpulseClassifierResults
+ * @property {number} anomaly
+ * @property {{label: string, value: number}[]} results
+ */
+/** @type {EdgeImpulseClassifierResults|undefined} */
+let classifierResults;
 (async () => {
   try {
     classifier = new EdgeImpulseClassifier();
@@ -1103,9 +1127,9 @@ let isClassifierLoaded = false;
     classifierProperties = classifier.getProperties();
     console.log("classifierProperties", classifierProperties);
     isClassifierLoaded = true;
-    setSampleRate(classifierProperties.frequency);
+    //setSampleRate(classifierProperties.frequency);
     updateClassifyButton();
-    setSampleLength((1000 * classifierProperties.frame_sample_count) / classifierProperties.frequency);
+    //setSampleLength((1000 * classifierProperties.frame_sample_count) / classifierProperties.frequency);
   } catch (error) {
     console.log("error loading classifier");
   }
@@ -1151,24 +1175,24 @@ function convertFloat32ToPCM(float32Array) {
   return pcmArray;
 }
 async function classify() {
+  await setSampleRate(classifierProperties.frequency);
   setIsClassifying(true);
   const audioData = await collectSamples(classifierProperties.frame_sample_count);
   const audioValues = convertFloat32ToPCM(combineFloat32Arrays(audioData));
   console.log(audioValues);
-  const results = classifier.classify(audioValues, true);
-  console.log("results", results);
-  classifierResultsPre.textContent = JSON.stringify(results, null, 2);
-  var highestResultIndex = -1;
-  var highestResultValue = -Infinity;
-  var highestResultLabel = "";
-  results.results.forEach(({ label, value }, index) => {
-    if (value > highestResultValue) {
-      highestResultValue = value;
-      highestResultIndex = index;
-      highestResultLabel = label;
-    }
-  });
-  topClassification.innerText = highestResultLabel;
+  classifierResults = classifier.classify(audioValues, true);
+  console.log("classifierResults", classifierResults);
+  classifierResults.results.sort((a, b) => b.value - a.value);
+  const phoneme = classifierResults.results[0].label;
+  topClassification.innerText = phoneme;
+  classifierResultsPre.textContent = JSON.stringify(classifierResults, null, 2);
+  throttledSendToGame();
+  if (phoneme == "silence") {
+    throttledSendToPinkTrombone({ intensity: 0 });
+  } else {
+    throttledSendToPinkTrombone({ phoneme, intensity: 1 }); // FIX - intensity
+  }
+
   setIsClassifying(false);
   if (autoClassify) {
     classify();
@@ -1190,3 +1214,28 @@ const autoClassifyCheckbox = document.getElementById("autoClassify");
 autoClassifyCheckbox.addEventListener("input", (event) => {
   autoClassify = event.target.checked;
 });
+
+let shouldSendToPinkTrombone = true;
+let shouldSendToLipSync = false;
+let shouldSendToPronunciation = false;
+const throttledSendToPinkTrombone = throttle((message) => {
+  if (shouldSendToPinkTrombone) {
+    send({ to: ["pink-trombone"], type: "message", ...message });
+  }
+}, 20);
+const throttledSendToGame = throttle(() => {
+  const to = [];
+  if (shouldSendToLipSync) {
+    to.push("lip-sync");
+  }
+  if (shouldSendToPronunciation) {
+    to.push("pronunciation");
+  }
+  if (to.length > 0) {
+    const _results = [];
+    classifierResults.results.forEach(({ value, label }) => {
+      _results.push({ name: label, weight: value });
+    });
+    send({ to, type: "message", results: _results });
+  }
+}, 5);

@@ -53,7 +53,16 @@
 
     <div class="column">
       <label>path <input id="path" type="text" readonly /></label>
-      <label>label <input id="label" type="text" /></label>
+      <label>
+        label
+        <select id="label">
+          <option selected>silence</option>
+          <optgroup id="vowelLabels" label="vowel"></optgroup>
+          <optgroup id="voicedConsonantLabels" label="consonant (voiced)"></optgroup>
+          <optgroup id="voicelessConsonantLabels" label="consonant (voiceless)"></optgroup>
+        </select>
+      </label>
+
       <label>
         sample rate
         <select id="sampleRate">
@@ -74,6 +83,17 @@
     <label>auto classify <input id="autoClassify" type="checkbox" /></label>
     <h4 id="topClassification"></h4>
     <pre id="classifierResultsPre"></pre>
+
+    <h3>Send Flags</h3>
+    <div id="sendFlags">
+      <label
+        >pink trombone <input type="checkbox" checked oninput="shouldSendToPinkTrombone = event.target.checked"
+      /></label>
+      <label>lip sync <input type="checkbox" checked oninput="shouldSendToLipSync = event.target.checked" /></label>
+      <label
+        >pronunciation <input type="checkbox" checked oninput="shouldSendToPronunciation = event.target.checked"
+      /></label>
+    </div>
   </body>
 
   <script src="/src/utils.js"></script>
