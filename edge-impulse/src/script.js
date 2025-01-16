@@ -53,7 +53,7 @@ const { send } = setupConnection(
 );
 
 // Sample Rate
-const sampleRates = [8000, 16000];
+const sampleRates = [8000, 16000, 44100, 48000];
 let sampleRate = sampleRates[1];
 const sampleRateInput = document.getElementById("sampleRate");
 const sampleRateOptgroup = sampleRateInput.querySelector("optgroup");
@@ -818,7 +818,7 @@ async function connectToRemoteManagement() {
 }
 
 /** @type {number} */
-let samplingInterval;
+let samplingInterval = 1000 / sampleRate;
 /** @param {number} newSamplingInterval */
 function setSamplingInterval(newSamplingInterval) {
   console.log({ newSamplingInterval });
