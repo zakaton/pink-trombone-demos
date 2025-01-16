@@ -301,7 +301,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
             }
             nodes.forEach(({ node, value }) => {
               // FIX timing
-              exponentialRampToValueAtTime(node, value, 0.01 + index * 0.1);
+              exponentialRampToValueAtTime(node, value, 0.04 + index * 0.1);
             });
           });
           setTimeout(() => {
