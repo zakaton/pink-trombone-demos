@@ -4,7 +4,10 @@ if (location.href.startsWith("http://")) {
 
 const searchParams = new URLSearchParams(location.search);
 const useEssentia = searchParams.get("essentia") !== null;
-let gainNode, audio;
+/** @type {GainNode} */
+let gainNode;
+/** @type {HTMLAudioElement} */
+let audio;
 
 function setupWebsocketConnection(webpageName, onMessage, onConnect) {
   // Create WebSocket connection.
@@ -93,7 +96,7 @@ function autoResumeAudioContext(audioContext) {
   const resumeAudioContext = () => {
     console.log(`new audio context state "${audioContext.state}"`);
     if (audioContext.state != "running" && audioContext.state != "closed") {
-      document.body.addEventListener("click", () => audioContext.resume(), {
+      document.body.addEventListener("click", () => audioContext?.resume(), {
         once: true,
       });
     }
@@ -116,15 +119,11 @@ function autoResumeAudioContext(audioContext) {
 function throttle(functionToThrottle, minimumInterval, optionalContext) {
   var lastTime;
   if (optionalContext) {
-    functionToThrottle = module.exports.bind(
-      functionToThrottle,
-      optionalContext
-    );
+    functionToThrottle = module.exports.bind(functionToThrottle, optionalContext);
   }
   return function () {
     var time = Date.now();
-    var sinceLastTime =
-      typeof lastTime === "undefined" ? minimumInterval : time - lastTime;
+    var sinceLastTime = typeof lastTime === "undefined" ? minimumInterval : time - lastTime;
     if (typeof lastTime === "undefined" || sinceLastTime >= minimumInterval) {
       lastTime = time;
       functionToThrottle.apply(null, arguments);
@@ -475,20 +474,7 @@ const phonemes = {
     },
   },
   eɪ: {
-    graphemes: [
-      "a",
-      "ai",
-      "eigh",
-      "aigh",
-      "ay",
-      "er",
-      "et",
-      "ei",
-      "au",
-      "a_e",
-      "ea",
-      "ey",
-    ],
+    graphemes: ["a", "ai", "eigh", "aigh", "ay", "er", "et", "ei", "au", "a_e", "ea", "ey"],
     example: "bay",
     constrictions: [
       {
@@ -768,19 +754,7 @@ const phonemes = {
     },
   },
   ɔ: {
-    graphemes: [
-      "aw",
-      "a",
-      "or",
-      "oor",
-      "ore",
-      "oar",
-      "our",
-      "augh",
-      "ar",
-      "ough",
-      "au",
-    ],
+    graphemes: ["aw", "a", "or", "oor", "ore", "oar", "our", "augh", "ar", "ough", "au"],
     example: "paw",
     constrictions: {
       tongue: {
@@ -1101,10 +1075,7 @@ const generateKeyframes = (pronunciation) => {
       const keyframe = {
         intensity: 1,
         name,
-        timeDelta:
-          index == constrictions.length - 1
-            ? timeBetweenPhonemes
-            : timeBetweenSubPhonemes,
+        timeDelta: index == constrictions.length - 1 ? timeBetweenPhonemes : timeBetweenSubPhonemes,
         "frontConstriction.diameter": 5,
         "backConstriction.diameter": 5,
       };
@@ -1142,26 +1113,17 @@ const generateKeyframes = (pronunciation) => {
         //voicedToVoicelessKeyframe.isHold = false;
         voicedToVoicelessKeyframe.timeDelta = 0.001;
         voicedToVoicelessKeyframe.intensity = 0.8;
-        Object.assign(
-          voicedToVoicelessKeyframe,
-          deconstructVoiceness(defaultVoiceless)
-        );
+        Object.assign(voicedToVoicelessKeyframe, deconstructVoiceness(defaultVoiceless));
         _keyframes.splice(1, 0, voicedToVoicelessKeyframe);
 
         // add keyframe after last to change back to voiced
-        const voicelessToVoicedKeyframe = Object.assign(
-          {},
-          _keyframes[_keyframes.length - 1]
-        );
+        const voicelessToVoicedKeyframe = Object.assign({}, _keyframes[_keyframes.length - 1]);
         voicelessToVoicedKeyframe.timeDelta = 0.001;
         voicelessToVoicedKeyframe.name = `${voicelessToVoicedKeyframe.name}}`;
         //voicelessToVoicedKeyframe.isHold = false;
 
         //voicelessToVoicedKeyframe.intensity = 0;
-        Object.assign(
-          voicelessToVoicedKeyframe,
-          deconstructVoiceness(defaultVoiceness)
-        );
+        Object.assign(voicelessToVoicedKeyframe, deconstructVoiceness(defaultVoiceness));
         _keyframes.push(voicelessToVoicedKeyframe);
       }
     });
@@ -1197,10 +1159,7 @@ const RenderKeyframes = (keyframes, time = 0, frequency = 140, speed = 1) => {
 
 const nonPhonemeIPAs = ["ˈ", "ˌ", "."];
 
-const getPhonemesAlternativesFromWords = (
-  wordsString,
-  shouldTrimPronunciation = false
-) => {
+const getPhonemesAlternativesFromWords = (wordsString, shouldTrimPronunciation = false) => {
   const wordsStrings = wordsString.split(" ");
   const wordsPhonemesAlternatives = [];
   const validWordStrings = [];
@@ -1233,12 +1192,7 @@ const splitPhonemesIntoSyllables = (_phonemes) => {
     if (phoneme in phonemes) {
       const { type } = phonemes[phoneme];
       const isSemiVowel = semiVowels.includes(phoneme);
-      if (
-        currentSyllable &&
-        currentSyllable.type == type &&
-        !isSemiVowel &&
-        !currentSyllable.isSemiVowel
-      ) {
+      if (currentSyllable && currentSyllable.type == type && !isSemiVowel && !currentSyllable.isSemiVowel) {
         currentSyllable.phonemes += phoneme;
       } else {
         currentSyllable = { type, phonemes: phoneme, isSemiVowel };

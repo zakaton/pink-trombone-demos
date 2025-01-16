@@ -20,6 +20,9 @@
   </style>
 
   <body>
+    <nav>
+      <a href="../../">home</a>
+    </nav>
     <h1>Text to Speech</h1>
 
     <textarea id="text" cols="70" placeholder="text"></textarea>
@@ -32,14 +35,7 @@
     >
     <br /><br />
     <label
-      >number of random phonemes
-      <input
-        id="numberOfRandomPhonemes"
-        type="number"
-        min="1"
-        max="100"
-        value="10"
-        step="1"
+      >number of random phonemes <input id="numberOfRandomPhonemes" type="number" min="1" max="100" value="10" step="1"
     /></label>
     <button id="generateRandomPhonemes">generate</button>
     <br /><br />
@@ -48,34 +44,11 @@
     <textarea id="phonemes" cols="70" placeholder="phonemes"></textarea>
     <p id="validPhonemes"></p>
     <div id="controls">
-      <label
-        >speed
-        <input type="number" value="1" id="speed" step="0.1" min="0.1" max="5"
-      /></label>
-      <label
-        >frequency
-        <input
-          type="number"
-          value="140"
-          id="initialFrequency"
-          step="1"
-          min="20"
-          max="990"
-      /></label>
-      <label
-        >tract
-        <input
-          type="number"
-          value="44"
-          id="initialTractLength"
-          step="1"
-          min="15"
-          max="88"
-      /></label>
+      <label>speed <input type="number" value="1" id="speed" step="0.1" min="0.1" max="5" /></label>
+      <label>frequency <input type="number" value="140" id="initialFrequency" step="1" min="20" max="990" /></label>
+      <label>tract <input type="number" value="44" id="initialTractLength" step="1" min="15" max="88" /></label>
       <button id="play" disabled>play all</button>
-      <label
-        >whisper <input oninput="onWhisperInput(event)" type="checkbox"
-      /></label>
+      <label>whisper <input oninput="onWhisperInput(event)" type="checkbox" /></label>
       <button id="download" disabled>download all</button>
       <a id="downloadLink" hidden></a>
     </div>
@@ -84,15 +57,9 @@
       <template id="resultTemplate">
         <div class="result">
           <b class="word"></b>
-          <div
-            class="alternatives"
-            style="display: flex; flex-direction: row"
-          ></div>
+          <div class="alternatives" style="display: flex; flex-direction: row"></div>
           <br />
-          <div
-            class="phonemes"
-            style="display: flex; flex-direction: column"
-          ></div>
+          <div class="phonemes" style="display: flex; flex-direction: column"></div>
           <br />
           <button class="play">play</button>
           <br />
@@ -104,68 +71,20 @@
           <span class="text" style="margin-right: 5px"></span>
           <label
             >intensity
-            <input
-              class="intensity"
-              type="number"
-              value="1"
-              min="0"
-              max="1"
-              step="0.1"
-            />
+            <input class="intensity" type="number" value="1" min="0" max="1" step="0.1" />
           </label>
           <label
             >offset
-            <input
-              class="offset"
-              type="number"
-              value="0.1"
-              min="0.05"
-              max="2"
-              step="0.05"
-            />
+            <input class="offset" type="number" value="0.1" min="0.05" max="2" step="0.05" />
           </label>
-          <label
-            >hold
-            <input
-              class="hold"
-              type="number"
-              value="0"
-              min="0"
-              max="2"
-              step="0.01"
-          /></label>
+          <label>hold <input class="hold" type="number" value="0" min="0" max="2" step="0.01" /></label>
+
+          <label>semitones <input class="semitones" type="number" value="0" step="1" max="100" min="-100" /></label>
+
+          <label>tract <input class="tractLength" type="number" value="0" step="1" min="0" max="88" /></label>
 
           <label
-            >semitones
-            <input
-              class="semitones"
-              type="number"
-              value="0"
-              step="1"
-              max="100"
-              min="-100"
-          /></label>
-
-          <label
-            >tract
-            <input
-              class="tractLength"
-              type="number"
-              value="0"
-              step="1"
-              min="0"
-              max="88"
-          /></label>
-
-          <label
-            >sub offset
-            <input
-              class="offsetBetweenSubPhonemes"
-              type="number"
-              value="0.01"
-              min="0"
-              max="1"
-              step="0.01"
+            >sub offset <input class="offsetBetweenSubPhonemes" type="number" value="0.01" min="0" max="1" step="0.01"
           /></label>
         </div>
       </template>

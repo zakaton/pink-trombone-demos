@@ -9,94 +9,39 @@
     }
   </style>
   <body>
-    <label
-      >freqeuncy
-      <input
-        step="10"
-        type="number"
-        class="frequency"
-        min="20"
-        max="1000"
-        value="140"
-    /></label>
+    <nav>
+      <a href="../../">home</a>
+    </nav>
+    <label>frequency <input step="10" type="number" class="frequency" min="20" max="1000" value="140" /></label>
     <label>
       frequency
-      <input
-      step="10"
-      type="range"
-      class="frequency"
-      min="20"
-      max="1000"
-      value="140"
-      />
+      <input step="10" type="range" class="frequency" min="20" max="1000" value="140" />
     </label>
     <label
       >intensity
-      <input
-        step="0.1"
-        type="number"
-        id="intensity"
-        value="1"
-        min="0"
-        max="1"
-      />
+      <input step="0.1" type="number" id="intensity" value="1" min="0" max="1" />
     </label>
     <label
       >voiceness
-      <input
-        step="0.1"
-        type="number"
-        id="voiceness"
-        value="1"
-        min="0"
-        max="1"
-      />
+      <input step="0.1" type="number" id="voiceness" value="1" min="0" max="1" />
     </label>
 
     <label>
       tongue index
-      <input
-        step="0.5"
-        min="12"
-        max="29"
-        type="number"
-        id="tongueIndex"
-        value="12.9"
-      />
+      <input step="0.5" min="12" max="29" type="number" id="tongueIndex" value="12.9" />
     </label>
     <label>
       tongue diameter
-      <input
-        step="0.5"
-        min="1.2"
-        max="4.5"
-        type="number"
-        id="tongueDiameter"
-        value="2.43"
-      />
+      <input step="0.5" min="1.2" max="4.5" type="number" id="tongueDiameter" value="2.43" />
     </label>
 
     <label>
       front index:
-      <input
-        type="number"
-        step="0.5"
-        min="28"
-        max="44"
-        value="43"
-        id="frontConstriction.index"
-      />
+      <input type="number" step="0.5" min="28" max="44" value="43" id="frontConstriction.index" />
     </label>
     <label>
       front diameter
-      <input
-        type="number"
-        step="0.5"
-        max="3"
-        min="-2"
-        id="frontConstriction.diameter"
-        value="1.8"
-      />
+      <input type="number" step="0.5" max="3" min="-2" id="frontConstriction.diameter" value="1.8" />
     </label>
 
     <label>
@@ -113,37 +58,16 @@
     </label>
     <label>
       back diameter
-      <input
-        step="0.5"
-        max="3"
-        min="-2"
-        type="number"
-        id="backConstriction.diameter"
-        value="1.8"
-      />
+      <input step="0.5" max="3" min="-2" type="number" id="backConstriction.diameter" value="1.8" />
     </label>
 
     <label>
       tract length
-      <input
-        class="tractLength"
-        type="number"
-        value="44"
-        step="1"
-        min="15"
-        max="88"
-      />
+      <input class="tractLength" type="number" value="44" step="1" min="15" max="88" />
     </label>
     <label>
       tract length
-      <input
-        class="tractLength"
-        type="range"
-        value="44"
-        step="1"
-        min="15"
-        max="88"
-      />
+      <input class="tractLength" type="range" value="44" step="1" min="15" max="88" />
     </label>
 
     <label
@@ -160,9 +84,7 @@
         <option value="">--select utterance--</option>
       </select>
     </label>
-    <label style="display: inline"
-      >text-to-speech <textarea id="ttsInput" placeholder="text"></textarea>
-    </label>
+    <label style="display: inline">text-to-speech <textarea id="ttsInput" placeholder="text"></textarea></label>
     <button id="ttsButton" disabled>speak</button>
     <br />
     <label style="display: inline"

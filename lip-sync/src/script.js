@@ -14,6 +14,7 @@ const { send } = setupConnection("lip-sync", (message) => {
     playKeyframes(utterance.keyframes);
   } else if (results) {
     const { name: phoneme } = results[0];
+    console.log("phoneme", phoneme);
     const morphTargets = phonemeToMorphTargets[phoneme];
     if (morphTargets) {
       interpolateTowardsMorphTargets(morphTargets);
@@ -25,11 +26,7 @@ const { send } = setupConnection("lip-sync", (message) => {
 const interpolateTowardsMorphTargets = (morphTargets, interpolation = 0.5) => {
   for (const name in morphTargetDictionary) {
     const key = morphTargetDictionary[name];
-    morphTargetInfluences[key] = lerp(
-      morphTargetInfluences[key] || 0,
-      morphTargets[name] || 0,
-      interpolation
-    );
+    morphTargetInfluences[key] = lerp(morphTargetInfluences[key] || 0, morphTargets[name] || 0, interpolation);
   }
 };
 
@@ -47,8 +44,7 @@ if (!isDebug) {
 let morphTargetInfluences, morphTargetDictionary;
 const avatar = document.getElementById("avatar");
 avatar.addEventListener("model-loaded", () => {
-  ({ morphTargetInfluences, morphTargetDictionary } =
-    avatar.components["gltf-model"].model.children[0].children[1]);
+  ({ morphTargetInfluences, morphTargetDictionary } = avatar.components["gltf-model"].model.children[0].children[1]);
   console.log("morphTargetDictionary", morphTargetDictionary);
   if (isDebug) {
     setupMorphTargetUI();
@@ -82,25 +78,13 @@ const mouthAnimationFrame = (timestamp) => {
     startTime = timestamp;
   }
   const timeOffset = (timestamp - startTime) / 1000;
-  const nextKeyframeIndex = keyframes.findIndex(
-    (keyframe) => keyframe.time > timeOffset
-  );
+  const nextKeyframeIndex = keyframes.findIndex((keyframe) => keyframe.time > timeOffset);
   const isFirstKeyframe = nextKeyframeIndex == 0;
   const nextKeyframe = keyframes[nextKeyframeIndex];
-  const previousKeyframe = isFirstKeyframe
-    ? { time: 0 }
-    : keyframes[nextKeyframeIndex - 1];
+  const previousKeyframe = isFirstKeyframe ? { time: 0 } : keyframes[nextKeyframeIndex - 1];
   if (nextKeyframe) {
-    const interpolation = getInterpolation(
-      previousKeyframe.time,
-      nextKeyframe.time,
-      timeOffset
-    );
-    setMouthFromPhonemes(
-      previousKeyframe.name,
-      nextKeyframe.name,
-      interpolation
-    );
+    const interpolation = getInterpolation(previousKeyframe.time, nextKeyframe.time, timeOffset);
+    setMouthFromPhonemes(previousKeyframe.name, nextKeyframe.name, interpolation);
     requestAnimationFrame(mouthAnimationFrame);
   } else {
     isAnimationRunning = false;
@@ -143,10 +127,7 @@ const getMorphTargetsFromPhoneme = ({ phoneme, index }) => {
         morphTargets.mouthOpen = 0.5;
       }
     } else {
-      morphTargets = Object.assign(
-        morphTargets,
-        phonemeToMorphTargets[phoneme]
-      );
+      morphTargets = Object.assign(morphTargets, phonemeToMorphTargets[phoneme]);
     }
   }
   if (!morphTargets) {
@@ -174,25 +155,16 @@ const setMouthFromPhonemes = (fromPhoneme, toPhoneme, interpolation = 0) => {
 
   const fromMorphTargets = getMorphTargetsFromPhoneme(unpackedFromPhoneme);
 
-  if (
-    unpackedFromPhoneme.index > 0 &&
-    unpackedFromPhoneme.phoneme in phonemeToMorphTargets
-  ) {
+  if (unpackedFromPhoneme.index > 0 && unpackedFromPhoneme.phoneme in phonemeToMorphTargets) {
     fromPhoneme += unpackedFromPhoneme.index;
   }
 
   if (toPhoneme) {
     const toMorphTargets = getMorphTargetsFromPhoneme(unpackedToPhoneme);
-    const sharedKeys = Object.keys(fromMorphTargets).concat(
-      Object.keys(toMorphTargets)
-    );
+    const sharedKeys = Object.keys(fromMorphTargets).concat(Object.keys(toMorphTargets));
     sharedKeys.forEach((key) => {
       if (!(key in morphTargets)) {
-        morphTargets[key] = lerp(
-          fromMorphTargets[key] || 0,
-          toMorphTargets[key] || 0,
-          interpolation
-        );
+        morphTargets[key] = lerp(fromMorphTargets[key] || 0, toMorphTargets[key] || 0, interpolation);
       }
     });
   } else {
@@ -222,9 +194,7 @@ const setMouthFromMorphTargets = (morphTargets = {}) => {
       }
     }
     if (isDebug) {
-      morphTargetContainerInputs[name]?.forEach(
-        (input) => (input.value = morphTargetInfluences[key] || 0)
-      );
+      morphTargetContainerInputs[name]?.forEach((input) => (input.value = morphTargetInfluences[key] || 0));
     }
   }
 };
@@ -397,8 +367,7 @@ for (const phoneme in phonemeToMorphTargets) {
 
     for (let i = 0; i < 3; i++) {
       if (typeof phonemeToMorphTargets[aliasedPhoneme + i]) {
-        phonemeToMorphTargets[phoneme + i] =
-          phonemeToMorphTargets[aliasedPhoneme + i];
+        phonemeToMorphTargets[phoneme + i] = phonemeToMorphTargets[aliasedPhoneme + i];
       }
     }
   }
@@ -414,15 +383,11 @@ const morphTargetTemplate = morphTargetsContainer.querySelector("template");
 const morphTargetKeysToIgnore = ["brow", "eye", "nose", "cheek"];
 const setupMorphTargetUI = () => {
   for (const name in morphTargetDictionary) {
-    if (
-      morphTargetKeysToIgnore.some((key) => name.toLowerCase().includes(key))
-    ) {
+    if (morphTargetKeysToIgnore.some((key) => name.toLowerCase().includes(key))) {
       //console.log("ignoring", name);
       continue;
     }
-    const morphTargetContainer = morphTargetTemplate.content
-      .cloneNode(true)
-      .querySelector(".morphTarget");
+    const morphTargetContainer = morphTargetTemplate.content.cloneNode(true).querySelector(".morphTarget");
     morphTargetContainer.querySelector("span").innerText = name;
     const inputs = Array.from(morphTargetContainer.querySelectorAll("input"));
     morphTargetContainerInputs[name] = inputs;
