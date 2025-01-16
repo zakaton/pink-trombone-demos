@@ -1,3 +1,35 @@
+const { PitchDetector } = Pitchy;
+let pitch, clarity;
+let detector, pitchInput, volumeInput, stream;
+let volumeThreshold = 0.01; //% volume triggering change
+let clarityThreshold = 0.97; // 0<1 clarity
+function updatePitch() {
+  analyserNode.getFloatTimeDomainData(pitchInput);
+  [pitch, clarity] = detector.findPitch(pitchInput, audioContext.sampleRate);
+
+  //pitchElement.textContent = `${Math.round(pitch * 10) / 10} Hz`;
+  //clarityElement.textContent = `${Math.round(clarity * 100)} %`;
+  console.log({ pitch, clarity });
+  return { pitch, clarity };
+}
+let volume;
+function updateVolume() {
+  analyserNode.getByteTimeDomainData(volumeInput);
+
+  // Calculate RMS (root mean square) for the "volume"
+  let sum = 0;
+  for (let i = 0; i < volumeInput.length; i++) {
+    const value = volumeInput[i] / 128 - 1; // Normalize to [-1, 1]
+    sum += value * value;
+  }
+  const rms = Math.sqrt(sum / volumeInput.length);
+  const volume = rms * 1;
+
+  console.log({ volume });
+
+  return volume;
+}
+
 const constrictions = {
   getData() {
     if (this.hasAllConstrictions()) {
@@ -127,7 +159,19 @@ async function setupAudioContext() {
   console.trace("setting up audio context");
   await clearAudioConext();
   audioContext = new AudioContext({ sampleRate });
+  if (gainNode) {
+    gainNode.disconnect();
+  }
   gainNode = audioContext.createGain();
+  analyserNode = audioContext.createAnalyser();
+  //analyserNode.fftSize = 256;
+  analyserDataArray = new Uint8Array(analyserNode.frequencyBinCount);
+  gainNode.connect(analyserNode);
+
+  detector = PitchDetector.forFloat32Array(analyserNode.fftSize);
+  pitchInput = new Float32Array(detector.inputLength);
+  volumeInput = new Uint8Array(detector.inputLength);
+
   autoResumeAudioContext(audioContext);
   setupMicrophone();
   setupScriptProcessor();
@@ -154,6 +198,10 @@ var mediaStream;
 var mediaStreamSourceNode;
 /** @type {ScriptProcessorNode|undefined} */
 var mediaStreamScriptProcessor;
+/** @type {AnalyserNode|undefined} */
+var analyserNode;
+/** @type {Uint8Array} */
+let analyserDataArray;
 
 const toggleMicrophoneButton = document.getElementById("toggleMicrophone");
 toggleMicrophoneButton.addEventListener("click", async () => {
@@ -310,7 +358,7 @@ function setProjectId(newProjectId) {
 }
 window.addEventListener("loadConfig", () => {
   if (config.projectId) {
-    projectIdInput.value = config.projectId;
+    setProjectId(Number(config.projectId));
   }
 });
 window.addEventListener("load", () => {
@@ -1183,14 +1231,24 @@ async function classify() {
   classifierResults = classifier.classify(audioValues, true);
   console.log("classifierResults", classifierResults);
   classifierResults.results.sort((a, b) => b.value - a.value);
-  const phoneme = classifierResults.results[0].label;
-  topClassification.innerText = phoneme;
-  classifierResultsPre.textContent = JSON.stringify(classifierResults, null, 2);
-  throttledSendToGame();
-  if (phoneme == "silence") {
-    throttledSendToPinkTrombone({ intensity: 0 });
+  const volume = updateVolume();
+  const { pitch, clarity } = updatePitch();
+  if (volume > volumeThreshold) {
+    const phoneme = classifierResults.results[0].label;
+    topClassification.innerText = phoneme;
+    classifierResultsPre.textContent = JSON.stringify(classifierResults, null, 2);
+    throttledSendToGame();
+    if (phoneme == "silence") {
+      throttledSendToPinkTrombone({ intensity: 0 });
+    } else {
+      const message = { phoneme, intensity: 1 };
+      if (clarity > clarityThreshold && pitch > 20) {
+        message.frequency = pitch;
+      }
+      throttledSendToPinkTrombone(message);
+    }
   } else {
-    throttledSendToPinkTrombone({ phoneme, intensity: 1 }); // FIX - intensity
+    throttledSendToPinkTrombone({ intensity: 0 });
   }
 
   setIsClassifying(false);
@@ -1216,13 +1274,13 @@ autoClassifyCheckbox.addEventListener("input", (event) => {
 });
 
 let shouldSendToPinkTrombone = true;
-let shouldSendToLipSync = false;
-let shouldSendToPronunciation = false;
+let shouldSendToLipSync = true;
+let shouldSendToPronunciation = true;
 const throttledSendToPinkTrombone = throttle((message) => {
   if (shouldSendToPinkTrombone) {
     send({ to: ["pink-trombone"], type: "message", ...message });
   }
-}, 20);
+}, 10);
 const throttledSendToGame = throttle(() => {
   const to = [];
   if (shouldSendToLipSync) {

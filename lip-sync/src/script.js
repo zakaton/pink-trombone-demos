@@ -23,7 +23,7 @@ const { send } = setupConnection("lip-sync", (message) => {
   }
 });
 
-const interpolateTowardsMorphTargets = (morphTargets, interpolation = 0.5) => {
+const interpolateTowardsMorphTargets = (morphTargets, interpolation = 0.9) => {
   for (const name in morphTargetDictionary) {
     const key = morphTargetDictionary[name];
     morphTargetInfluences[key] = lerp(morphTargetInfluences[key] || 0, morphTargets[name] || 0, interpolation);

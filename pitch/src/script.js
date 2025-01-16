@@ -33,7 +33,7 @@ function updateVolume() {
 }
 
 let updateInterval = 50; //x ms update intervall
-let volumeThreshold = 0.2; //% volume triggering change
+let volumeThreshold = 0.1; //% volume triggering change
 let clarityThreshold = 0.97; // 0<1 clarity
 const throttledSend = throttle(() => {
   const message = {
