@@ -1230,7 +1230,7 @@ async function classify() {
   const audioData = await collectSamples(classifierProperties.frame_sample_count);
   const audioValues = convertFloat32ToPCM(combineFloat32Arrays(audioData));
   console.log(audioValues);
-  classifierResults = classifier.classify(audioValues, true);
+  classifierResults = classifier.classify(audioValues, false);
   console.log("classifierResults", classifierResults);
   classifierResults.results.sort((a, b) => b.value - a.value);
   const volume = updateVolume();
@@ -1280,6 +1280,7 @@ autoClassifyCheckbox.addEventListener("input", (event) => {
 let shouldSendToPinkTrombone = true;
 let shouldSendToLipSync = true;
 let shouldSendToPronunciation = true;
+let shouldSendToGame = true;
 const throttledSendToPinkTrombone = throttle((message) => {
   if (shouldSendToPinkTrombone) {
     send({ to: ["pink-trombone"], type: "message", ...message });
@@ -1293,9 +1294,12 @@ const throttledSendToGame = throttle(() => {
   if (shouldSendToPronunciation) {
     to.push("pronunciation");
   }
+  if (shouldSendToGame) {
+    to.push("game");
+  }
   if (to.length > 0) {
     const _results = [];
-    classifierResults.results.forEach(({ value, label }) => {
+    classifierResults.results.forEach(({ value, label }, index) => {
       _results.push({ name: label, weight: value });
     });
     send({ to, type: "message", results: _results });
