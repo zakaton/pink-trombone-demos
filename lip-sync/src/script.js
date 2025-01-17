@@ -32,7 +32,7 @@ const interpolateTowardsMorphTargets = (morphTargets, interpolation = 0.9) => {
 
 const debouncedResetMouth = debounce(() => {
   playKeyframes(RenderKeyframes(generateKeyframes(".")));
-}, 100);
+}, 400);
 
 const isDebug = searchParams.get("debug") != undefined;
 

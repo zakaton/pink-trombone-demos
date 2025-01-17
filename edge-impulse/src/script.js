@@ -1299,4 +1299,4 @@ const throttledSendToGame = throttle(() => {
     });
     send({ to, type: "message", results: _results });
   }
-}, 5);
+}, 2);

@@ -1,9 +1,12 @@
 const { send } = setupConnection("pronunciation", (message) => {
   if (selectedPronunciation) {
-    if (message.from == "knn") {
+    if (message.from == "knn" || message.from == "edge-impulse") {
       const { results } = message;
       const { name, weight } = results[0];
-      if (name == trimmedSelectedPronunciation[currentPhonemeIndex]) {
+
+      const phoneme = trimmedSelectedPronunciation[currentPhonemeIndex];
+      console.log(name, phoneme);
+      if (name == phoneme || phonemes[name]?.aliases?.has(trimmedSelectedPronunciation[currentPhonemeIndex])) {
         if (currentPhonemeIndex + 1 == trimmedSelectedPronunciation.length) {
           //reset();
           setPhonemeIndex(currentPhonemeIndex + 1);
@@ -41,9 +44,7 @@ const pronunciationTemplate = pronunciationsContainer.querySelector("template");
 const updatePronunciations = () => {
   pronunciationsContainer.innerHTML = "";
   pronunciations.forEach((pronunciation, index) => {
-    const pronunciationContainer = pronunciationTemplate.content
-      .cloneNode(true)
-      .querySelector(".pronunciation");
+    const pronunciationContainer = pronunciationTemplate.content.cloneNode(true).querySelector(".pronunciation");
     pronunciationContainer.querySelector("span").innerText = pronunciation;
 
     const input = pronunciationContainer.querySelector("input");
@@ -95,26 +96,26 @@ const setPronunciation = (pronunciation) => {
     trimmedSelectedPronunciation = trimPronunciation(selectedPronunciation);
     Array.from(trimmedSelectedPronunciation).forEach((phoneme, index) => {
       const span = document.createElement("span");
-      span.classList.add("phoneme")
+      span.classList.add("phoneme");
       span.innerText = phoneme;
-      
+
       const onEnter = () => {
         if (playPhonemeOnHover) {
           span.classList.add("highlighted");
           highlightedPhoneme = phoneme;
           throttledSend({ phoneme, intensity: 1 });
         }
-      }
+      };
       span.addEventListener("mouseenter", () => onEnter());
       span.addEventListener("pointerenter", () => onEnter());
-      
+
       const onLeave = () => {
         if (playPhonemeOnHover) {
           span.classList.remove("highlighted");
           highlightedPhoneme = undefined;
           debouncedSilence();
         }
-      }
+      };
       span.addEventListener("mouseleave", () => onLeave());
       span.addEventListener("pointerleave", () => onLeave());
 
@@ -124,17 +125,17 @@ const setPronunciation = (pronunciation) => {
           highlightedPhoneme = phoneme;
           throttledSend({ phoneme, intensity: 1 });
         }
-      }
+      };
       span.addEventListener("mousedown", () => onDown());
       span.addEventListener("pointerdown", () => onDown());
-      
+
       const onUp = () => {
         if (!playPhonemeOnHover) {
           span.classList.remove("highlighted");
           highlightedPhoneme = undefined;
           throttledSend({ intensity: 0 });
         }
-      }
+      };
       span.addEventListener("mouseup", () => onUp());
       span.addEventListener("pointerup", () => onUp());
 
@@ -147,9 +148,7 @@ const setPronunciation = (pronunciation) => {
 const buttonsContainer = document.getElementById("buttons");
 
 const playButton = document.getElementById("play");
-playButton.addEventListener("click", () =>
-  playPronunciation(selectedPronunciation)
-);
+playButton.addEventListener("click", () => playPronunciation(selectedPronunciation));
 const playPronunciation = (pronunciation) => {
   let keyframes = generateKeyframes(pronunciation);
   keyframes = RenderKeyframes(keyframes);

@@ -896,6 +896,11 @@ const alternateIPAs = {
 for (const alternatePhoneme in alternateIPAs) {
   const phoneme = alternateIPAs[alternatePhoneme];
   phonemes[alternatePhoneme] = phonemes[phoneme];
+  if (!phonemes[phoneme].aliases) {
+    phonemes[phoneme].aliases = new Set();
+  }
+  phonemes[phoneme].aliases.add(phoneme);
+  phonemes[phoneme].aliases.add(alternatePhoneme);
 }
 
 const utterances = [
