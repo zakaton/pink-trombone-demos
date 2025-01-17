@@ -86,7 +86,7 @@ const { send } = setupConnection(
 
 // Sample Rate
 const sampleRates = [8000, 16000, 44100, 48000];
-let sampleRate = sampleRates[1];
+let sampleRate = sampleRates[sampleRates.length - 1];
 const sampleRateInput = document.getElementById("sampleRate");
 const sampleRateOptgroup = sampleRateInput.querySelector("optgroup");
 sampleRates.forEach((sampleRate) => {
@@ -1158,6 +1158,7 @@ let classifier;
 let classifierProject;
 let classifierProperties;
 let isClassifierLoaded = false;
+let classifierThreshold = 0.3;
 /**
  * @typedef {object} EdgeImpulseClassifierResults
  * @property {number} anomaly
@@ -1233,8 +1234,10 @@ async function classify() {
   classifierResults.results.sort((a, b) => b.value - a.value);
   const volume = updateVolume();
   const { pitch, clarity } = updatePitch();
-  if (volume > volumeThreshold) {
-    const phoneme = classifierResults.results[0].label;
+  const phoneme = classifierResults.results[0].label;
+  const value = classifierResults.results[0].value;
+  console.log({ phoneme, value });
+  if (volume > volumeThreshold && value > classifierThreshold) {
     topClassification.innerText = phoneme;
     classifierResultsPre.textContent = JSON.stringify(classifierResults, null, 2);
     throttledSendToGame();
