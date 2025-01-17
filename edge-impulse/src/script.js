@@ -746,6 +746,7 @@ Object.entries(phonemes).forEach(([phoneme, value]) => {
 });
 labelInput.addEventListener("input", (event) => {
   setLabel(event.target.value);
+  throttledSendToPinkTrombone({ phoneme: event.target.value });
 });
 /** @param {string} newLabel */
 function setLabel(newLabel) {
