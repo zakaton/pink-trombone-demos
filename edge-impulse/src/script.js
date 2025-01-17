@@ -1246,7 +1246,7 @@ async function classify() {
       throttledSendToPinkTrombone({ intensity: 0 });
     } else {
       const message = { phoneme, intensity: 1 };
-      if (clarity > clarityThreshold && pitch > 20) {
+      if (clarity > clarityThreshold && pitch > 50) {
         message.frequency = pitch;
       }
       throttledSendToPinkTrombone(message);
