@@ -1,7 +1,7 @@
 const vectorOffset = new THREE.Vector3();
 const eulerOffset = new THREE.Euler();
 const cameraEuler = new THREE.Euler();
-let vectorScalar = 0.02;
+let vectorScalar = 0.06;
 let eulerScalar = 0.02;
 const { send } = setupConnection("game", (message) => {
   let { results, loudness } = message;
@@ -37,6 +37,7 @@ const { send } = setupConnection("game", (message) => {
       case "down":
       case "e":
       case "ɪ":
+      case "ʌ":
         eulerOffset.x = -weight;
         break;
     }

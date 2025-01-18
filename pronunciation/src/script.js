@@ -4,7 +4,10 @@ const { send } = setupConnection("pronunciation", (message) => {
       const { results } = message;
       const { name, weight } = results[0];
 
-      const phoneme = trimmedSelectedPronunciation[currentPhonemeIndex];
+      let phoneme = trimmedSelectedPronunciation[currentPhonemeIndex];
+      if (phoneme == "o") {
+        phoneme = "ʌ";
+      }
       console.log(name, phoneme);
       if (name == phoneme || phonemes[name]?.aliases?.has(trimmedSelectedPronunciation[currentPhonemeIndex])) {
         if (currentPhonemeIndex + 1 == trimmedSelectedPronunciation.length) {

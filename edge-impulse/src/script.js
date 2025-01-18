@@ -1239,7 +1239,8 @@ async function classify() {
   const value = classifierResults.results[0].value;
   console.log({ phoneme, value });
   if (volume > volumeThreshold && value > classifierThreshold) {
-    topClassification.innerText = phoneme;
+    const string = phonemes[phoneme] ? `${phoneme} (${phonemes[phoneme].example})` : phoneme;
+    topClassification.innerText = string;
     classifierResultsPre.textContent = JSON.stringify(classifierResults, null, 2);
     throttledSendToGame();
     if (phoneme == "silence") {
