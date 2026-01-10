@@ -329,7 +329,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 backConstriction.diameter.maxValue
               );
             }
-            console.log("notes", nodes);
+            //console.log("notes", nodes);
             nodes.forEach(({ node, value }) => {
               // FIX timing
               exponentialRampToValueAtTime(node, value, 0.04 + index * 0.1);

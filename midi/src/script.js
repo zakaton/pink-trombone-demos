@@ -362,6 +362,8 @@ phonemeSelect.addEventListener("input", () => {
   if (phonemeSelect.value.length) {
     setMode("phoneme");
     playButton.click();
+  } else {
+    setMode("pitch");
   }
   phonemeSelect.blur();
 });
@@ -376,6 +378,8 @@ utteranceSelect.addEventListener("input", () => {
   if (utteranceSelect.value.length) {
     setMode("utterance");
     playButton.click();
+  } else {
+    setMode("pitch");
   }
   utteranceSelect.blur();
 });
@@ -383,21 +387,29 @@ utteranceSelect.addEventListener("input", () => {
 // TTS
 const ttsInput = document.getElementById("ttsInput");
 ttsInput.addEventListener("input", (event) => {
-  setMode("tts");
   const string = event.target.value;
-  if (string.endsWith("\n")) {
-    event.target.value = string.slice(0, -1);
-    playButton.click();
+  if (string.length > 0) {
+    setMode("tts");
+    if (string.endsWith("\n")) {
+      event.target.value = string.slice(0, -1);
+      playButton.click();
+    }
+  } else {
+    setMode("pitch");
   }
 });
 
 // PTS
 const ptsInput = document.getElementById("ptsInput");
 ptsInput.addEventListener("input", (event) => {
-  setMode("pts");
   const string = event.target.value;
-  if (string.endsWith("\n")) {
-    event.target.value = string.slice(0, -1);
-    playButton.click();
+  if (string.length > 0) {
+    setMode("pts");
+    if (string.endsWith("\n")) {
+      event.target.value = string.slice(0, -1);
+      playButton.click();
+    }
+  } else {
+    setMode("pitch");
   }
 });
