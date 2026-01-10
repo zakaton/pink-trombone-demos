@@ -20,7 +20,9 @@ pinkTromboneElement.addEventListener("load", (event) => {
         audioContext.destination.channelCount = 2;
       }
 
-      pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(audioContext.destination);
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(
+        audioContext.destination
+      );
     } else {
       pinkTromboneElement.connect(pinkTromboneElement.audioContext.destination);
     }
@@ -49,8 +51,14 @@ pinkTromboneElement.addEventListener("setConstriction", (event) => {
 
     switch (event.detail.type) {
       case "linear":
-        constriction.index.linearRampToValueAtTime(indexValue, event.detail.endTime);
-        constriction.diameter.linearRampToValueAtTime(diameterValue, event.detail.endTime);
+        constriction.index.linearRampToValueAtTime(
+          indexValue,
+          event.detail.endTime
+        );
+        constriction.diameter.linearRampToValueAtTime(
+          diameterValue,
+          event.detail.endTime
+        );
         break;
       default:
         constriction.index.value = indexValue;
@@ -122,10 +130,13 @@ const updateConstriction = throttle(() => {
     constrictions: {},
   };
 
-  const constrictionIndex = pinkTromboneElement.UI._tractUI._touchConstrictionIndices[-1];
+  const constrictionIndex =
+    pinkTromboneElement.UI._tractUI._touchConstrictionIndices[-1];
   const isTongue = constrictionIndex == -1;
   if (isTongue) {
-    const { index, diameter } = deconstructConstriction(pinkTromboneElement.tongue);
+    const { index, diameter } = deconstructConstriction(
+      pinkTromboneElement.tongue
+    );
     message.constrictions.tongue = {
       index,
       diameter,
@@ -136,9 +147,13 @@ const updateConstriction = throttle(() => {
     );
     if (!(index == 0 && diameter == 0)) {
       const isBackConstriction = index < getIndexThreshold();
-      const targetConstriction = isBackConstriction ? backConstriction : frontConstriction;
+      const targetConstriction = isBackConstriction
+        ? backConstriction
+        : frontConstriction;
       setConstriction(targetConstriction, index, diameter);
-      message.constrictions[isBackConstriction ? "backConstriction" : "frontConstriction"] = {
+      message.constrictions[
+        isBackConstriction ? "backConstriction" : "frontConstriction"
+      ] = {
         index,
         diameter,
       };
@@ -176,6 +191,7 @@ function updateVoiceness(tenseness) {
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
+  //console.log("message", message);
   for (const key in message) {
     const value = message[key];
     let valueNumber = Number(value);
@@ -252,8 +268,16 @@ const { send } = setupConnection("pink-trombone", (message) => {
           setVoiceness(voiceness);
           if (!("intensity" in message)) {
             exponentialRampToValueAtTime(pinkTromboneElement.intensity, 1);
-            exponentialRampToValueAtTime(pinkTromboneElement.intensity, 1, 0.1 * constrictions.length);
-            exponentialRampToValueAtTime(pinkTromboneElement.intensity, 0, 0.1 * constrictions.length + 1);
+            exponentialRampToValueAtTime(
+              pinkTromboneElement.intensity,
+              1,
+              0.1 * constrictions.length
+            );
+            exponentialRampToValueAtTime(
+              pinkTromboneElement.intensity,
+              0,
+              0.1 * constrictions.length + 1
+            );
           }
           constrictions.forEach((constriction, index) => {
             const { tongue, front, back } = constriction;
@@ -283,7 +307,10 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 nodes.push(node);
               });
             } else {
-              exponentialRampToValueAtTime(frontConstriction.diameter, frontConstriction.diameter.maxValue);
+              exponentialRampToValueAtTime(
+                frontConstriction.diameter,
+                frontConstriction.diameter.maxValue
+              );
             }
             if (back) {
               features.forEach((feature) => {
@@ -297,7 +324,10 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 nodes.push(node);
               });
             } else {
-              exponentialRampToValueAtTime(backConstriction.diameter, backConstriction.diameter.maxValue);
+              exponentialRampToValueAtTime(
+                backConstriction.diameter,
+                backConstriction.diameter.maxValue
+              );
             }
             nodes.forEach(({ node, value }) => {
               // FIX timing
@@ -321,7 +351,8 @@ const { send } = setupConnection("pink-trombone", (message) => {
         }
         break;
       default:
-      //console.log("uncaught key", key);
+        console.log("uncaught key", key);
+        break;
     }
 
     if (node) {
@@ -360,7 +391,10 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
     value = 0.0001;
   }
   //node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
-  node.exponentialRampToValueAtTime(value, pinkTromboneElement.audioContext.currentTime + offset);
+  node.exponentialRampToValueAtTime(
+    value,
+    pinkTromboneElement.audioContext.currentTime + offset
+  );
 }
 
 const keyframeStrings = [
@@ -400,7 +434,10 @@ function playKeyframes(keyframes) {
         node = node[path.shift()];
       }
       const offset = keyframe.time;
-      node.linearRampToValueAtTime(value, pinkTromboneElement.audioContext.currentTime + offset);
+      node.linearRampToValueAtTime(
+        value,
+        pinkTromboneElement.audioContext.currentTime + offset
+      );
     });
   });
 }
@@ -417,7 +454,8 @@ const toggleDarkMode = () => {
     document.body.style.margin = "0px";
     document.body.style.filter = "grayscale(1)";
   } else {
-    pinkTromboneElement.UI._container.style.gridTemplateRows = "auto 200px 100px";
+    pinkTromboneElement.UI._container.style.gridTemplateRows =
+      "auto 200px 100px";
     pinkTromboneElement.UI._container.style.gridTemplateColumns = "auto 100px";
     pinkTromboneElement.UI._buttonsUI._container.style.display = "flex";
     pinkTromboneElement.UI._glottisUI._container.style.display = "";
@@ -462,7 +500,9 @@ const getMicrophone = async () => {
     updateMicrophoneSelect();
   }
   mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
-  mediaStreamSourceNode.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode);
+  mediaStreamSourceNode.connect(
+    pinkTromboneElement.pinkTrombone._pinkTromboneNode
+  );
   pinkTromboneElement.pinkTrombone._fricativeFilter.disconnect();
   pinkTromboneElement.pinkTrombone._aspirateFilter.disconnect();
 
@@ -479,8 +519,12 @@ const stopMicrophone = () => {
     debugMicrophoneButton.setAttribute("hidden", "");
     toggleMicrophoneButton.innerText = "enable microphone";
 
-    pinkTromboneElement.pinkTrombone._fricativeFilter.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise);
-    pinkTromboneElement.pinkTrombone._aspirateFilter.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise);
+    pinkTromboneElement.pinkTrombone._fricativeFilter.connect(
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+    );
+    pinkTromboneElement.pinkTrombone._aspirateFilter.connect(
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+    );
   }
 };
 
@@ -495,7 +539,9 @@ const updateMicrophoneSelect = async () => {
     microphoneSelect.removeAttribute("hidden");
     microphoneOptGroup.innerHTML = "";
     microphones.forEach((microphone) => {
-      microphoneOptGroup.appendChild(new Option(microphone.label, microphone.deviceId));
+      microphoneOptGroup.appendChild(
+        new Option(microphone.label, microphone.deviceId)
+      );
     });
     didCheckMicrophonesOnce = true;
   } else {

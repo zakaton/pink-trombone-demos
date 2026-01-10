@@ -160,6 +160,7 @@ ptsInput.addEventListener("input", (event) => {
 ptsButton.addEventListener("click", () => {
   const phonemes = ptsInput.value;
   throttledSend({ phonemes });
+  console.log({ phonemes });
 });
 
 const tractLengthInputs = document.querySelectorAll(".tractLength");

@@ -24,6 +24,37 @@
     <label style="display: none">
       Release Velocity: <span id="releaseVelocity"></span>
     </label>
+
+    <label>
+      phoneme
+      <select id="phoneme">
+        <option value="">--select phoneme--</option>
+        <optgroup id="vowels" label="vowels"></optgroup>
+        <optgroup id="consonants" label="consonants"></optgroup>
+      </select>
+    </label>
+    <label>
+      utterance
+      <select id="utterance">
+        <option value="">--select utterance--</option>
+      </select>
+    </label>
+    <label>
+      text-to-speech <textarea id="ttsInput" placeholder="text"></textarea>
+    </label>
+    <br />
+    <label>
+      phoneme-to-speech
+      <textarea placeholder="phonemes" id="ptsInput"></textarea>
+    </label>
+
+    <label style="display: inline">
+      mode
+      <select id="mode">
+        <optgroup label="select mode"></optgroup>
+      </select>
+    </label>
+    <button id="play">play</button>
   </body>
   <script src="/midi/src/script.js" type="module"></script>
 </html>

@@ -15,6 +15,8 @@ const throttledSend = throttle((message) => {
   _send(message);
 }, 100);
 
+_send({ "vibrato.wobble": 0 });
+
 // TONE
 /** @type {import("tone")} */
 const Tone = window.Tone;
@@ -48,7 +50,7 @@ const keyToNote = {
 /** @type {Record<string, boolean>} */
 const isKeyDown = {};
 document.addEventListener("keydown", (event) => {
-  if (event.target.closest("input")) {
+  if (event.target.closest("input,textarea,select")) {
     return;
   }
   const { key } = event;
@@ -88,6 +90,26 @@ document.addEventListener("keyup", (event) => {
   }
 });
 
+// MODE
+/** @typedef {"pitch" | "phoneme" | "utterance" | "tts" | "pts"} Mode */
+/** @type {Mode[]} */
+const modes = ["pitch", "phoneme", "utterance", "tts", "pts"];
+/** @type {Mode} */
+let mode = "pitch";
+/** @param {Mode} newMode */
+const setMode = (newMode) => {
+  mode = newMode;
+  console.log({ mode });
+  modeSelect.value = mode;
+};
+/** @type {HTMLSelectElement} */
+const modeSelect = document.getElementById("mode");
+const modeOptgroup = modeSelect.querySelector("optgroup");
+modes.forEach((mode) => {
+  modeOptgroup.appendChild(new Option(mode));
+});
+modeSelect.addEventListener("input", () => setMode(modeSelect.value));
+
 // FREQUENCY
 
 const frequencySpan = document.getElementById("frequency");
@@ -102,6 +124,7 @@ const throttledOffFrequencySend = throttle((message) => {
 }, 100);
 
 let ignoreMidi = false;
+let latestFrequency = Tone.Frequency("C4");
 /** @param {Frequency} frequency */
 const onFrequency = (frequency, velocity = 0.5) => {
   if (ignoreMidi) {
@@ -124,9 +147,61 @@ const onFrequency = (frequency, velocity = 0.5) => {
   )}Hz)`;
   attackVelocitySpan.innerText = velocity.toFixed(2);
 
+  latestFrequency = Tone.Frequency(frequency);
+
   const message = { frequency: frequency.toFrequency(), intensity: velocity };
-  // FILL - set phoneme/utterance/etc based on mode
+  switch (mode) {
+    case "pitch":
+      break;
+    case "phoneme":
+      {
+        const phoneme = phonemeSelect.value;
+        if (phoneme.length > 0) {
+          if (true) {
+            Object.assign(message, { phoneme });
+          } else {
+            Object.assign(message, {
+              utterance: {
+                name: phoneme,
+                keyframes: RenderKeyframes(generateKeyframes(phoneme)),
+              },
+            });
+          }
+        } else {
+          console.error("no phoneme selected");
+        }
+      }
+      break;
+    case "utterance":
+      {
+        const utterance = utteranceSelect.value;
+        if (utterance.length > 0) {
+          Object.assign(message, { utterance });
+        } else {
+          console.error("no utterance selected");
+        }
+      }
+      break;
+    case "tts":
+      {
+        const text = ttsInput.value;
+        Object.assign(message, { text });
+      }
+      break;
+    case "pts":
+      {
+        const phonemes = ptsInput.value;
+        Object.assign(message, { phonemes });
+      }
+      break;
+    default:
+      console.error(`uncaught mode "${mode}"`);
+      break;
+  }
+  console.log("message", message);
   _send(message);
+
+  playButton.innerText = "stop";
 };
 /** @param {Frequency} frequency */
 const offFrequency = (frequency, velocity = 0.5) => {
@@ -145,7 +220,23 @@ const offFrequency = (frequency, velocity = 0.5) => {
   releaseVelocitySpan.innerText = velocity.toFixed(2);
 
   _send({ intensity: 0 });
+
+  playButton.innerText = "play";
 };
+
+const playButton = document.getElementById("play");
+playButton.addEventListener("mousedown", () => {
+  if (!latestFrequency) {
+    return;
+  }
+  onFrequency(latestFrequency);
+});
+playButton.addEventListener("mouseup", () => {
+  if (!latestFrequency) {
+    return;
+  }
+  offFrequency(latestFrequency);
+});
 
 // WEBMIDI
 
@@ -200,7 +291,7 @@ const onWebMidiNoteOn = (event) => {
     const frequency = Tone.Midi(note.number);
     onFrequency(frequency, applyVelocityCurve(note.attack));
   } else {
-    // FILL
+    // FILL - pads
   }
 };
 /** @type {InputEventMap["noteoff"]} */
@@ -212,7 +303,7 @@ const onWebMidiNoteOff = (event) => {
     const frequency = Tone.Midi(note.number);
     offFrequency(frequency, applyVelocityCurve(note.release));
   } else {
-    // FILL
+    // FILL - pads
   }
 };
 
@@ -245,3 +336,58 @@ try {
 } catch (error) {
   console.error(error);
 }
+
+// PHONEMES
+
+const phonemeSelect = document.getElementById("phoneme");
+const consonantsOptgroup = document.getElementById("consonants");
+const vowelsOptgroup = document.getElementById("vowels");
+for (const phoneme in phonemes) {
+  const { example, type } = phonemes[phoneme];
+  const option = new Option(`${phoneme} (${example})`, phoneme);
+  const optgroup = type == "consonant" ? consonantsOptgroup : vowelsOptgroup;
+  optgroup.appendChild(option);
+}
+phonemeSelect.addEventListener("input", () => {
+  if (phonemeSelect.value.length) {
+    setMode("phoneme");
+    playButton.click();
+  }
+  phonemeSelect.blur();
+});
+
+// UTTERANCES
+const utteranceSelect = document.getElementById("utterance");
+utterances.forEach(({ name }, index) => {
+  const option = new Option(name, index);
+  utteranceSelect.appendChild(option);
+});
+utteranceSelect.addEventListener("input", () => {
+  if (utteranceSelect.value.length) {
+    setMode("utterance");
+    playButton.click();
+  }
+  utteranceSelect.blur();
+});
+
+// TTS
+const ttsInput = document.getElementById("ttsInput");
+ttsInput.addEventListener("input", (event) => {
+  setMode("tts");
+  const string = event.target.value;
+  if (string.endsWith("\n")) {
+    event.target.value = string.slice(0, -1);
+    playButton.click();
+  }
+});
+
+// PTS
+const ptsInput = document.getElementById("ptsInput");
+ptsInput.addEventListener("input", (event) => {
+  setMode("pts");
+  const string = event.target.value;
+  if (string.endsWith("\n")) {
+    event.target.value = string.slice(0, -1);
+    playButton.click();
+  }
+});
