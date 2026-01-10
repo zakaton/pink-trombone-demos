@@ -294,41 +294,56 @@ const getDownFrequency = (frequency) => {
 const applyVelocityCurve = (velocity) => Math.max(0.5, velocity);
 /** @type {InputEventMap["noteon"]} */
 const onWebMidiNoteOn = (event) => {
-  const { note, message } = event;
+  const { note, message, type, value } = event;
   const { channel } = message;
-  console.log(event.type, { note, channel });
+  const { number, attack } = note;
+  console.log({ type, note, channel });
   if (channel == 1) {
-    const frequency = Tone.Midi(note.number);
-    onFrequency(frequency, applyVelocityCurve(note.attack));
+    const frequency = Tone.Midi(number);
+    onFrequency(frequency, applyVelocityCurve(attack));
   } else {
     // FILL - pads
   }
+
+  setMidiMessagePre({ type, channel, number, attack });
 };
 /** @type {InputEventMap["noteoff"]} */
 const onWebMidiNoteOff = (event) => {
-  const { note, message } = event;
+  const { note, message, type } = event;
   const { channel } = message;
-  console.log(event.type, { note, channel });
+  const { release, number } = note;
   if (channel == 1) {
-    const frequency = Tone.Midi(note.number);
-    offFrequency(frequency, applyVelocityCurve(note.release));
+    const frequency = Tone.Midi(number);
+    offFrequency(frequency, applyVelocityCurve(release));
   } else {
     // FILL - pads
   }
+
+  setMidiMessagePre({ type, channel, number, release });
 };
 
 /** @type {InputEventMap["channelaftertouch"]} */
 const onWebMidiChannelAfterTouch = (event) => {
-  const { value, message } = event;
+  const { value, message, type } = event;
   const { channel } = message;
-  console.log(event.type, { value, channel });
+  setMidiMessagePre({
+    type,
+    channel,
+    value,
+  });
 };
 
 /** @type {InputEventMap["controlchange"]} */
 const onWebMidiControlChange = (event) => {
-  const { value, message, controller } = event;
+  const { value, message, controller, type } = event;
   const { channel } = message;
-  console.log(event.type, { value, channel, controller: controller.number });
+  const { number } = controller;
+  setMidiMessagePre({
+    type,
+    channel,
+    value,
+    number,
+  });
 };
 
 try {
@@ -413,3 +428,10 @@ ptsInput.addEventListener("input", (event) => {
     setMode("pitch");
   }
 });
+
+// MIDI MESSAGE
+/** @type {HTMLPreElement} */
+const midiMessagePre = document.getElementById("midiMessage");
+const setMidiMessagePre = (message) => {
+  midiMessagePre.textContent = JSON.stringify(message, null, 2);
+};
