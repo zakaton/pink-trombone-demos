@@ -329,6 +329,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 backConstriction.diameter.maxValue
               );
             }
+            console.log("notes", nodes);
             nodes.forEach(({ node, value }) => {
               // FIX timing
               exponentialRampToValueAtTime(node, value, 0.04 + index * 0.1);
@@ -346,12 +347,23 @@ const { send } = setupConnection("pink-trombone", (message) => {
         } else if (value in utterances) {
           keyframes = utterances[value].keyframes;
         }
+        keyframes = structuredClone(keyframes);
         if (keyframes && keyframes.length > 0) {
+          if (message.holdLastKeyframe) {
+            keyframes.pop();
+          }
+          if (message.frequency) {
+            const baseFrequency = keyframes[0].frequency;
+            keyframes.forEach((keyframe) => {
+              const frequencyRatio = keyframe.frequency / baseFrequency;
+              keyframe.frequency = frequencyRatio * message.frequency;
+            });
+          }
           playKeyframes(keyframes);
         }
         break;
       default:
-        console.log("uncaught key", key);
+        //console.log("uncaught key", key);
         break;
     }
 
@@ -418,6 +430,7 @@ const keyframeStrings = [
 ];
 
 function playKeyframes(keyframes) {
+  //console.log("playKeyframes", keyframes);
   keyframes.forEach((keyframe) => {
     keyframeStrings.forEach((keyframeString) => {
       let value = keyframe[keyframeString];

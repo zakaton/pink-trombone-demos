@@ -15,7 +15,7 @@ const throttledSend = throttle((message) => {
   _send(message);
 }, 100);
 
-_send({ "vibrato.wobble": 0 });
+_send({ "vibrato.wobble": 0.0, voiceness: 1 });
 
 // TONE
 /** @type {import("tone")} */
@@ -64,7 +64,9 @@ document.addEventListener("keydown", (event) => {
 
   if (note) {
     onFrequency(
-      Tone.Frequency(note).transpose((WebMidi.octaveOffset - 1) * 12)
+      Tone.Frequency(note).transpose(
+        (WebMidi.octaveOffset - baseOctaveOffset) * 12
+      )
     );
     event.preventDefault();
   }
@@ -84,7 +86,9 @@ document.addEventListener("keyup", (event) => {
 
   if (note) {
     offFrequency(
-      Tone.Frequency(note).transpose((WebMidi.octaveOffset - 1) * 12)
+      Tone.Frequency(note).transpose(
+        (WebMidi.octaveOffset - baseOctaveOffset) * 12
+      )
     );
     event.preventDefault();
   }
@@ -149,7 +153,11 @@ const onFrequency = (frequency, velocity = 0.5) => {
 
   latestFrequency = Tone.Frequency(frequency);
 
-  const message = { frequency: frequency.toFrequency(), intensity: velocity };
+  const message = {
+    frequency: frequency.toFrequency(),
+    intensity: velocity,
+    holdLastKeyframe: true,
+  };
   switch (mode) {
     case "pitch":
       break;
@@ -243,9 +251,11 @@ playButton.addEventListener("mouseup", () => {
 /** @typedef {import("webmidi").WebMidi} WebMidi */
 /** @typedef {import("webmidi").InputEventMap} InputEventMap */
 
+const baseOctaveOffset = 0;
+
 /** @type {WebMidi} */
 const WebMidi = window.WebMidi;
-WebMidi.octaveOffset = 1;
+WebMidi.octaveOffset = baseOctaveOffset;
 
 const octaveOffsetInput = document.getElementById("octaveOffset");
 octaveOffsetInput.addEventListener("input", () => {

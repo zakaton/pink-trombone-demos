@@ -1,13 +1,14 @@
 const { send } = setupConnection("tts", (message) => {
-  const { text, phonemes } = message;
+  const { text, phonemes, frequency, time, tractLength, holdLastKeyframe } =
+    message;
   if (text) {
     textInput.value = text;
     textInput.dispatchEvent(new Event("input"));
-    playButton.click();
+    play(time, frequency, tractLength, holdLastKeyframe);
   } else if (phonemes) {
     phonemesInput.value = phonemes;
     phonemesInput.dispatchEvent(new Event("input"));
-    playButton.click();
+    play(time, frequency, tractLength, holdLastKeyframe);
   }
 });
 
@@ -60,13 +61,31 @@ function downloadJSON(json) {
 }
 
 const playButton = document.getElementById("play");
-playButton.addEventListener("click", () => {
-  const utterance = getUtterance(true);
+playButton.addEventListener("click", () => play());
+/**
+ * @param {number?} time
+ * @param {number?} frequency
+ * @param {number?} tractLength
+ * @param {boolean?} holdLastKeyframe
+ */
+const play = (time, frequency, tractLength, holdLastKeyframe) => {
+  const utterance = getUtterance(time, frequency, tractLength);
+  if (holdLastKeyframe) {
+    utterance.keyframes.pop();
+  }
   throttledSend({ utterance });
-});
+};
 
-const getUtterance = () => {
-  const utterance = { name: finalString, keyframes: renderKeyframes() };
+/**
+ * @param {number?} time
+ * @param {number?} frequency
+ * @param {number?} tractLength
+ */
+const getUtterance = (time, frequency, tractLength) => {
+  const utterance = {
+    name: finalString,
+    keyframes: renderKeyframes(time, frequency, tractLength),
+  };
   console.log("utterance", utterance);
   return utterance;
 };
