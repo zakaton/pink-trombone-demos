@@ -90,6 +90,10 @@ document.addEventListener("keyup", (event) => {
 
 // FREQUENCY
 
+const frequencySpan = document.getElementById("frequency");
+const attackVelocitySpan = document.getElementById("attackVelocity");
+const releaseVelocitySpan = document.getElementById("releaseVelocity");
+
 const throttledOnFrequencySend = throttle((message) => {
   _send(message);
 }, 100);
@@ -115,6 +119,11 @@ const onFrequency = (frequency, velocity = 0.5) => {
   downFrequencies.push(frequency);
   console.log({ note: frequency.toNote(), downFrequencies });
 
+  frequencySpan.innerText = `${frequency.toNote()} (${Math.round(
+    frequency.toFrequency()
+  )}Hz)`;
+  attackVelocitySpan.innerText = velocity.toFixed(2);
+
   const message = { frequency: frequency.toFrequency(), intensity: velocity };
   // FILL - set phoneme/utterance/etc based on mode
   _send(message);
@@ -132,6 +141,8 @@ const offFrequency = (frequency, velocity = 0.5) => {
   }
 
   console.log({ note: frequency.toNote(), downFrequencies });
+
+  releaseVelocitySpan.innerText = velocity.toFixed(2);
 
   _send({ intensity: 0 });
 };

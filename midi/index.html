@@ -15,13 +15,15 @@
       <a href="../../">home</a>
     </nav>
 
-    <label>Frequency <span id="frequency"></span></label>
     <label>
       Octave offset
       <input id="octaveOffset" type="number" min="-3" max="3" value="1" />
     </label>
-    <label>Attack Velocity <span id="attackVelocity"></span></label>
-    <label>Release Velocity <span id="releaseVelocity"></span></label>
+    <label>Frequency: <span id="frequency"></span></label>
+    <label>Attack Velocity: <span id="attackVelocity"></span></label>
+    <label style="display: none">
+      Release Velocity: <span id="releaseVelocity"></span>
+    </label>
   </body>
   <script src="/midi/src/script.js" type="module"></script>
 </html>
