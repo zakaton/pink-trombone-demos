@@ -1,14 +1,21 @@
 const { send } = setupConnection("tts", (message) => {
-  const { text, phonemes, frequency, time, tractLength, holdLastKeyframe } =
-    message;
+  const {
+    text,
+    phonemes,
+    frequency,
+    time,
+    tractLength,
+    holdLastKeyframe,
+    lastKeyframe,
+  } = message;
   if (text) {
     textInput.value = text;
     textInput.dispatchEvent(new Event("input"));
-    play(time, frequency, tractLength, holdLastKeyframe);
+    play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
   } else if (phonemes) {
     phonemesInput.value = phonemes;
     phonemesInput.dispatchEvent(new Event("input"));
-    play(time, frequency, tractLength, holdLastKeyframe);
+    play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
   }
 });
 
@@ -67,24 +74,34 @@ playButton.addEventListener("click", () => play());
  * @param {number?} frequency
  * @param {number?} tractLength
  * @param {boolean?} holdLastKeyframe
+ * @param {boolean?} lastKeyframe
  */
-const play = (time, frequency, tractLength, holdLastKeyframe) => {
-  const utterance = getUtterance(time, frequency, tractLength);
+const play = (time, frequency, tractLength, holdLastKeyframe, lastKeyframe) => {
+  const utterance = getUtterance(
+    time,
+    frequency,
+    tractLength,
+    lastKeyframe ? -1 : 0
+  );
   if (holdLastKeyframe) {
     utterance.keyframes.pop();
   }
-  throttledSend({ utterance });
+  if (lastKeyframe) {
+    utterance.keyframes = utterance.keyframes.slice(-1);
+  }
+  throttledSend({ utterance, holdLastKeyframe, lastKeyframe });
 };
 
 /**
  * @param {number?} time
  * @param {number?} frequency
  * @param {number?} tractLength
+ * @param {number?} offset
  */
-const getUtterance = (time, frequency, tractLength) => {
+const getUtterance = (time, frequency, tractLength, offset) => {
   const utterance = {
     name: finalString,
-    keyframes: renderKeyframes(time, frequency, tractLength),
+    keyframes: renderKeyframes(time, frequency, tractLength, offset),
   };
   console.log("utterance", utterance);
   return utterance;
@@ -93,10 +110,16 @@ const getUtterance = (time, frequency, tractLength) => {
 const renderKeyframes = (
   time = 0,
   frequency = initialFrequency,
-  tractLength = initialTractLength
+  tractLength = initialTractLength,
+  offset = 0
 ) => {
   const keyframes = [];
-  resultsContainer.querySelectorAll(".result").forEach((resultContainer) => {
+  const results = resultsContainer.querySelectorAll(".result");
+  offset = offset < 0 ? results.length + offset + 1 : offset;
+  results.forEach((resultContainer, index) => {
+    if (offset != 0 && index < offset) {
+      return;
+    }
     const _keyframes = resultContainer.renderKeyframes(
       time,
       frequency,

@@ -165,13 +165,89 @@ const onFrequency = (frequency, velocity = 0.5) => {
       {
         const phoneme = phonemeSelect.value;
         if (phoneme.length > 0) {
-          if (true) {
-            Object.assign(message, { phoneme });
+          Object.assign(message, {
+            utterance: {
+              name: phoneme,
+              keyframes: RenderKeyframes(generateKeyframes(phoneme)),
+            },
+          });
+        } else {
+          console.error("no phoneme selected");
+        }
+      }
+      break;
+    case "utterance":
+      {
+        const utterance = utteranceSelect.value;
+        if (utterance.length > 0) {
+          Object.assign(message, { utterance });
+        } else {
+          console.error("no utterance selected");
+        }
+      }
+      break;
+    case "tts":
+      {
+        const text = ttsInput.value;
+        Object.assign(message, { text });
+      }
+      break;
+    case "pts":
+      {
+        const phonemes = ptsInput.value;
+        Object.assign(message, { phonemes });
+      }
+      break;
+    default:
+      console.error(`uncaught mode "${mode}"`);
+      break;
+  }
+  //console.log("sending message", message);
+  _send(message);
+
+  playButton.innerText = "stop";
+};
+/** @param {Frequency} frequency */
+const offFrequency = (frequency, velocity = 0.5) => {
+  const downFrequencyIndex = getDownFrequencyIndex(frequency);
+  const downFrequency = downFrequencies[downFrequencyIndex];
+
+  if (downFrequency) {
+    downFrequencies.splice(downFrequencyIndex, 1);
+  } else {
+    //console.error("downFrequency not found", frequency);
+    return;
+  }
+
+  //console.log({ note: frequency.toNote(), downFrequencies });
+
+  releaseVelocitySpan.innerText = velocity.toFixed(2);
+
+  let message = {
+    frequency: frequency.toFrequency(),
+    //intensity: velocity,
+    lastKeyframe: true,
+  };
+  switch (mode) {
+    case "pitch":
+      message.intensity = 0;
+      break;
+    case "phoneme":
+      if (false) {
+        message.intensity = 0;
+      } else {
+        const phoneme = phonemeSelect.value;
+        if (phoneme.length > 0) {
+          const keyframes = RenderKeyframes(generateKeyframes(phoneme));
+          if (keyframes.length == 1) {
+            message.intensity = 0;
           } else {
             Object.assign(message, {
               utterance: {
                 name: phoneme,
-                keyframes: RenderKeyframes(generateKeyframes(phoneme)),
+                keyframes: RenderKeyframes(generateKeyframes(phoneme)).slice(
+                  -1
+                ),
               },
             });
           }
@@ -208,26 +284,6 @@ const onFrequency = (frequency, velocity = 0.5) => {
   }
   // console.log("sending message", message);
   _send(message);
-
-  playButton.innerText = "stop";
-};
-/** @param {Frequency} frequency */
-const offFrequency = (frequency, velocity = 0.5) => {
-  const downFrequencyIndex = getDownFrequencyIndex(frequency);
-  const downFrequency = downFrequencies[downFrequencyIndex];
-
-  if (downFrequency) {
-    downFrequencies.splice(downFrequencyIndex, 1);
-  } else {
-    //console.error("downFrequency not found", frequency);
-    return;
-  }
-
-  //console.log({ note: frequency.toNote(), downFrequencies });
-
-  releaseVelocitySpan.innerText = velocity.toFixed(2);
-
-  _send({ intensity: 0 });
 
   playButton.innerText = "play";
 };
@@ -460,7 +516,7 @@ const midiMapValueTypes = [
   "tractLength",
 ];
 
-/** @typedef {{channel: number, number: number}} MidiMapKey */
+/** @typedef {{type: string, channel: number, number: number}} MidiMapKey */
 /** @typedef {{output: string, type: string, value: any}} MidiMapValue */
 /** @typedef {Map<MidiMapKey, MidiMapValue} MidiMap */
 /** @type {MidiMap?} */

@@ -188,6 +188,8 @@ function updateVoiceness(tenseness) {
   _voiceness = Math.acos(1 - tenseness) / (Math.PI * 0.5);
 }
 
+let latestPhonemeTimestamp = 0;
+let latestPlayKeyframesTimestamp = 0;
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
@@ -237,7 +239,9 @@ const { send } = setupConnection("pink-trombone", (message) => {
         node = pinkTromboneElement.intensity;
         break;
       case "frequency":
-        node = pinkTromboneElement.frequency;
+        if (!message.utterance) {
+          node = pinkTromboneElement.frequency;
+        }
         break;
       case "tractLength":
         node = pinkTromboneElement.tractLength;
@@ -279,7 +283,12 @@ const { send } = setupConnection("pink-trombone", (message) => {
               0.1 * constrictions.length + 1
             );
           }
+          const phonemeTimestamp = Date.now();
+          latestPhonemeTimestamp = phonemeTimestamp;
           constrictions.forEach((constriction, index) => {
+            if (phonemeTimestamp != latestPhonemeTimestamp) {
+              return;
+            }
             const { tongue, front, back } = constriction;
             const nodes = [];
             const features = ["index", "diameter"];
@@ -349,7 +358,11 @@ const { send } = setupConnection("pink-trombone", (message) => {
         }
         keyframes = structuredClone(keyframes);
         if (keyframes && keyframes.length > 0) {
-          if (message.holdLastKeyframe) {
+          if (
+            message.holdLastKeyframe &&
+            keyframes.length > 1 &&
+            keyframes.at(-1).name == "."
+          ) {
             keyframes.pop();
           }
           if (message.frequency) {
@@ -359,7 +372,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
               keyframe.frequency = frequencyRatio * message.frequency;
             });
           }
-          playKeyframes(keyframes);
+          playKeyframes(keyframes, message.lastKeyframe ? -1 : 0);
         }
         break;
       default:
@@ -429,7 +442,18 @@ const keyframeStrings = [
   "tractLength",
 ];
 
-function playKeyframes(keyframes) {
+function playKeyframes(keyframes, offset = 0) {
+  const playKeyframesTimestamp = Date.now();
+  latestPlayKeyframesTimestamp = playKeyframesTimestamp;
+  offset = offset < 0 ? keyframes.length + offset : offset;
+  if (offset != 0) {
+    keyframes = structuredClone(keyframes);
+    const timeOffset = keyframes[offset].time - keyframes[offset - 1].time;
+    keyframes = keyframes.slice(offset);
+    keyframes.forEach((keyframe) => {
+      keyframe.time -= timeOffset;
+    });
+  }
   //console.log("playKeyframes", keyframes);
   keyframes.forEach((keyframe) => {
     keyframeStrings.forEach((keyframeString) => {
