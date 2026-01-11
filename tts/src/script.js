@@ -7,7 +7,11 @@ const { send } = setupConnection("tts", (message) => {
     tractLength,
     holdLastKeyframe,
     lastKeyframe,
+    isWhispering,
   } = message;
+  if (isWhispering != undefined) {
+    setIsWhispering(isWhispering);
+  }
   if (text) {
     textInput.value = text;
     textInput.dispatchEvent(new Event("input"));
@@ -355,7 +359,17 @@ const createResultContainer = () => {
       frequency,
       intensity: 0,
     });
-    console.log("utterance", utterance);
+    //console.log("utterance", utterance);
+    if (isWhispering) {
+      utterance.keyframes.forEach((keyframe) => {
+        Object.assign(keyframe, deconstructVoiceness(0));
+      });
+    }
+    if (phonemeSubstitutionType == "misc.slurring") {
+      utterance.keyframes.forEach((keyframe) => {
+        Object.assign(keyframe, deconstructVoiceness(0.8));
+      });
+    }
     throttledSend({ utterance });
   });
 
@@ -712,9 +726,14 @@ phonemeSubstitutionsSelect.addEventListener("input", (event) => {
 });
 
 let isWhispering = false;
+const whisperToggle = document.getElementById("whisper");
 const onWhisperInput = (event) => {
-  isWhispering = event.target.checked;
-  //console.log("isWhispering", isWhispering);
+  setIsWhispering(event.target.checked);
+};
+const setIsWhispering = (newIsWhispering) => {
+  isWhispering = newIsWhispering;
+  console.log({ isWhispering });
+  whisperToggle.checked = isWhispering;
 };
 
 let numberOfRandomPhonemes = 10;

@@ -488,6 +488,12 @@ ptsInput.addEventListener("input", (event) => {
   }
 });
 
+// WHISPER
+// FILL
+
+// SPEED
+// FILL
+
 // MIDI MESSAGE
 /** @type {HTMLPreElement} */
 const midiMessagePre = document.getElementById("midiMessage");
