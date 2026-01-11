@@ -110,6 +110,11 @@ const setMode = (newMode) => {
 const modeSelect = document.getElementById("mode");
 const modeOptgroup = modeSelect.querySelector("optgroup");
 modes.forEach((mode) => {
+  switch (mode) {
+    case "utterance":
+      return;
+      break;
+  }
   modeOptgroup.appendChild(new Option(mode));
 });
 modeSelect.addEventListener("input", () => setMode(modeSelect.value));
