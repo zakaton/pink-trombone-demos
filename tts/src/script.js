@@ -8,9 +8,13 @@ const { send } = setupConnection("tts", (message) => {
     holdLastKeyframe,
     lastKeyframe,
     isWhispering,
+    speed,
   } = message;
   if (isWhispering != undefined) {
     setIsWhispering(isWhispering);
+  }
+  if (speed != undefined) {
+    setSpeed(speed);
   }
   if (text) {
     textInput.value = text;
@@ -26,9 +30,13 @@ const { send } = setupConnection("tts", (message) => {
 let speed = 1;
 const speedInput = document.getElementById("speed");
 speedInput.addEventListener("input", (event) => {
-  speed = Number(event.target.value);
-  //console.log("speed", speed);
+  setSpeed(+speedInput.value);
 });
+const setSpeed = (newSpeed) => {
+  speed = newSpeed;
+  console.log({ speed });
+  speedInput.value = speed;
+};
 
 let initialFrequency = 140;
 const initialFrequencyInput = document.getElementById("initialFrequency");

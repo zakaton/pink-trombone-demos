@@ -489,10 +489,30 @@ ptsInput.addEventListener("input", (event) => {
 });
 
 // WHISPER
-// FILL
+let isWhispering = false;
+const whisperCheckbox = document.getElementById("whisper");
+whisperCheckbox.addEventListener("input", () => {
+  setIsWhispering(whisperCheckbox.checked);
+});
+const setIsWhispering = (newIsWhispering) => {
+  isWhispering = newIsWhispering;
+  console.log({ isWhispering });
+  _send({ isWhispering });
+  whisperCheckbox.checked = isWhispering;
+};
 
 // SPEED
-// FILL
+let speed = 1.0;
+const speedInput = document.getElementById("speed");
+speedInput.addEventListener("input", () => {
+  setSpeed(+speedInput.value);
+});
+const setSpeed = (newSpeed) => {
+  speed = newSpeed;
+  console.log({ speed });
+  _send({ speed });
+  speedInput.value = speed;
+};
 
 // MIDI MESSAGE
 /** @type {HTMLPreElement} */
