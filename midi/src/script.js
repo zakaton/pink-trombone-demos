@@ -58,7 +58,7 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   isKeyDown[key] = true;
-  console.log(`keydown "${key}"`);
+  // console.log(`keydown "${key}"`);
 
   const note = keyToNote[key];
 
@@ -80,7 +80,7 @@ document.addEventListener("keyup", (event) => {
     return;
   }
   isKeyDown[key] = false;
-  console.log(`keyup "${key}"`);
+  // console.log(`keyup "${key}"`);
 
   const note = keyToNote[key];
 
@@ -144,7 +144,7 @@ const onFrequency = (frequency, velocity = 0.5) => {
   }
 
   downFrequencies.push(frequency);
-  console.log({ note: frequency.toNote(), downFrequencies });
+  // console.log({ note: frequency.toNote(), downFrequencies });
 
   frequencySpan.innerText = `${frequency.toNote()} (${Math.round(
     frequency.toFrequency()
@@ -206,7 +206,7 @@ const onFrequency = (frequency, velocity = 0.5) => {
       console.error(`uncaught mode "${mode}"`);
       break;
   }
-  console.log("message", message);
+  // console.log("sending message", message);
   _send(message);
 
   playButton.innerText = "stop";
@@ -223,7 +223,7 @@ const offFrequency = (frequency, velocity = 0.5) => {
     return;
   }
 
-  console.log({ note: frequency.toNote(), downFrequencies });
+  //console.log({ note: frequency.toNote(), downFrequencies });
 
   releaseVelocitySpan.innerText = velocity.toFixed(2);
 
@@ -291,20 +291,22 @@ const getDownFrequency = (frequency) => {
   );
 };
 
+/** @type {MidiMapKey} */
+let latestNonKeyNote;
 const applyVelocityCurve = (velocity) => Math.max(0.5, velocity);
 /** @type {InputEventMap["noteon"]} */
 const onWebMidiNoteOn = (event) => {
-  const { note, message, type, value } = event;
+  const { note, message, type } = event;
   const { channel } = message;
   const { number, attack } = note;
-  console.log({ type, note, channel });
+  // console.log({ type, note, channel });
   if (channel == 1) {
     const frequency = Tone.Midi(number);
     onFrequency(frequency, applyVelocityCurve(attack));
   } else {
-    // FILL - pads
+    latestNonKeyNote = { number, channel };
+    // FILL - trigger if midimap is defined
   }
-
   setMidiMessagePre({ type, channel, number, attack });
 };
 /** @type {InputEventMap["noteoff"]} */
@@ -316,7 +318,7 @@ const onWebMidiNoteOff = (event) => {
     const frequency = Tone.Midi(number);
     offFrequency(frequency, applyVelocityCurve(release));
   } else {
-    // FILL - pads
+    // FILL - trigger if midimap is defined
   }
 
   setMidiMessagePre({ type, channel, number, release });
@@ -329,6 +331,7 @@ const onWebMidiChannelAfterTouch = (event) => {
   setMidiMessagePre({
     type,
     channel,
+    number: latestNonKeyNote.number,
     value,
   });
 };
@@ -341,8 +344,8 @@ const onWebMidiControlChange = (event) => {
   setMidiMessagePre({
     type,
     channel,
-    value,
     number,
+    value,
   });
 };
 
@@ -435,3 +438,34 @@ const midiMessagePre = document.getElementById("midiMessage");
 const setMidiMessagePre = (message) => {
   midiMessagePre.textContent = JSON.stringify(message, null, 2);
 };
+
+// MIDI MAPPING
+const midiMapValueTypes = [
+  "frequency",
+
+  "tongue.index",
+  "tongue.diameter",
+
+  "frontConstriction.index",
+  "frontConstriction.diameter",
+
+  "backConstriction.index",
+  "backConstriction.diameter",
+
+  "tenseness",
+  "loudness",
+
+  "intensity",
+
+  "tractLength",
+];
+
+/** @typedef {{channel: number, number: number}} MidiMapKey */
+/** @typedef {{output: string, type: string, value: any}} MidiMapValue */
+/** @typedef {Map<MidiMapKey, MidiMapValue} MidiMap */
+/** @type {MidiMap?} */
+let midiMapping;
+
+// FILL - add/remove mapping
+// FILL - save/load to localStorage
+// FILL - import/export mapping
