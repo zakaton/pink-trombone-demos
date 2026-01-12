@@ -181,6 +181,7 @@ function setVoiceness(voiceness, offset) {
     },
   ];
   nodes.forEach(({ node, value }) => {
+    pendingNodes.add(node);
     exponentialRampToValueAtTime(node, value, offset);
   });
 }
@@ -190,16 +191,22 @@ function updateVoiceness(tenseness) {
 
 let latestPhonemeTimestamp = 0;
 let latestPlayKeyframesTimestamp = 0;
+let lastKeyframe = false;
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
   //console.log("message", message);
+  if (message.lastKeyframe) {
+    lastKeyframe = true;
+    clearPendingNodes();
+  }
   for (const key in message) {
     const value = message[key];
     let valueNumber = Number(value);
     if (key.endsWith("index")) {
       valueNumber = normalizeIndex(valueNumber, message.tractLength);
     }
+
     let node;
     let nodes = [];
     switch (key) {
@@ -420,6 +427,7 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
     value,
     pinkTromboneElement.audioContext.currentTime + offset
   );
+  pendingNodes.add(node);
 }
 
 const keyframeStrings = [
@@ -442,6 +450,15 @@ const keyframeStrings = [
   "tractLength",
 ];
 
+/** @type {Set<AudioParam>} */
+const pendingNodes = new Set();
+const clearPendingNodes = () => {
+  // console.log("clearPendingNodes");
+  pendingNodes.forEach((node) => {
+    node.cancelScheduledValues(pinkTromboneElement.audioContext.currentTime);
+  });
+  pendingNodes.clear();
+};
 function playKeyframes(keyframes, offset = 0) {
   const playKeyframesTimestamp = Date.now();
   latestPlayKeyframesTimestamp = playKeyframesTimestamp;
@@ -470,6 +487,7 @@ function playKeyframes(keyframes, offset = 0) {
       while (path.length) {
         node = node[path.shift()];
       }
+      pendingNodes.add(node);
       const offset = keyframe.time;
       node.linearRampToValueAtTime(
         value,

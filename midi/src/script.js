@@ -95,13 +95,16 @@ document.addEventListener("keyup", (event) => {
 });
 
 // MODE
-/** @typedef {"pitch" | "phoneme" | "utterance" | "tts" | "pts"} Mode */
+/** @typedef {"pitch" | "phoneme" | "utterance" | "tts" | "pts" | "tts2"} Mode */
 /** @type {Mode[]} */
-const modes = ["pitch", "phoneme", "utterance", "tts", "pts"];
+const modes = ["pitch", "phoneme", "utterance", "tts", "pts", "tts2"];
 /** @type {Mode} */
 let mode = "pitch";
 /** @param {Mode} newMode */
 const setMode = (newMode) => {
+  if (mode == newMode) {
+    return;
+  }
   mode = newMode;
   console.log({ mode });
   modeSelect.value = mode;
@@ -113,7 +116,6 @@ modes.forEach((mode) => {
   switch (mode) {
     case "utterance":
       return;
-      break;
   }
   modeOptgroup.appendChild(new Option(mode));
 });
@@ -167,6 +169,7 @@ const onFrequency = (frequency, velocity = 0.5) => {
     case "pitch":
       break;
     case "phoneme":
+      delete message.intensity;
       {
         const phoneme = phonemeSelect.value;
         if (phoneme.length > 0) {
@@ -183,6 +186,8 @@ const onFrequency = (frequency, velocity = 0.5) => {
       break;
     case "utterance":
       {
+        delete message.intensity;
+
         const utterance = utteranceSelect.value;
         if (utterance.length > 0) {
           Object.assign(message, { utterance });
@@ -194,17 +199,25 @@ const onFrequency = (frequency, velocity = 0.5) => {
     case "tts":
       {
         const text = ttsInput.value;
+        delete message.intensity;
         Object.assign(message, { text });
       }
       break;
     case "pts":
       {
         const phonemes = ptsInput.value;
+        delete message.intensity;
+
         Object.assign(message, { phonemes });
       }
       break;
+    case "tts2":
+      Object.assign(message, { playTts: true });
+      delete message.intensity;
+      break;
     default:
       console.error(`uncaught mode "${mode}"`);
+      delete message.intensity;
       break;
   }
   //console.log("sending message", message);
@@ -283,6 +296,9 @@ const offFrequency = (frequency, velocity = 0.5) => {
         Object.assign(message, { phonemes });
       }
       break;
+    case "tts2":
+      Object.assign(message, { playTts: true });
+      break;
     default:
       console.error(`uncaught mode "${mode}"`);
       break;
@@ -354,7 +370,7 @@ const getDownFrequency = (frequency) => {
 
 /** @type {MidiMapKey} */
 let latestNonKeyNote;
-const applyVelocityCurve = (velocity) => Math.max(0.5, velocity);
+const applyVelocityCurve = (velocity) => 0.5 ?? Math.max(0.5, velocity);
 /** @type {InputEventMap["noteon"]} */
 const onWebMidiNoteOn = (event) => {
   const { note, message, type } = event;

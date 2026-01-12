@@ -9,6 +9,7 @@ const { send } = setupConnection("tts", (message) => {
     lastKeyframe,
     isWhispering,
     speed,
+    playTts,
   } = message;
   if (isWhispering != undefined) {
     setIsWhispering(isWhispering);
@@ -23,6 +24,8 @@ const { send } = setupConnection("tts", (message) => {
   } else if (phonemes) {
     phonemesInput.value = phonemes;
     phonemesInput.dispatchEvent(new Event("input"));
+    play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
+  } else if (playTts) {
     play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
   }
 });
