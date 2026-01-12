@@ -181,9 +181,6 @@ function setVoiceness(voiceness, offset) {
     },
   ];
   nodes.forEach(({ node, value }) => {
-    if (pendingNodes.has(node)) {
-      node.cancelScheduledValues(audioContext.currentTime);
-    }
     pendingNodes.add(node);
     exponentialRampToValueAtTime(node, value, offset);
   });
@@ -436,9 +433,6 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
     value,
     pinkTromboneElement.audioContext.currentTime + offset
   );
-  if (pendingNodes.has(node)) {
-    node.cancelScheduledValues(audioContext.currentTime);
-  }
   pendingNodes.add(node);
 }
 
@@ -465,13 +459,15 @@ const keyframeStrings = [
 /** @type {Set<AudioParam>} */
 const pendingNodes = new Set();
 const clearPendingNodes = () => {
-  console.log("clearPendingNodes");
+  //console.log("clearPendingNodes");
   pendingNodes.forEach((node) => {
     node.cancelScheduledValues(pinkTromboneElement.audioContext.currentTime);
   });
   pendingNodes.clear();
 };
 function playKeyframes(keyframes, offset = 0) {
+  clearPendingNodes();
+
   const playKeyframesTimestamp = Date.now();
   latestPlayKeyframesTimestamp = playKeyframesTimestamp;
   offset = offset < 0 ? keyframes.length + offset : offset;
@@ -498,9 +494,6 @@ function playKeyframes(keyframes, offset = 0) {
       let node = pinkTromboneElement;
       while (path.length) {
         node = node[path.shift()];
-      }
-      if (pendingNodes.has(node)) {
-        node.cancelScheduledValues(audioContext.currentTime);
       }
       pendingNodes.add(node);
       const offset = keyframe.time;
