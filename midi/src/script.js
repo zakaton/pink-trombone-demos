@@ -263,9 +263,7 @@ const offFrequency = (frequency, velocity = 0.5) => {
             Object.assign(message, {
               utterance: {
                 name: phoneme,
-                keyframes: RenderKeyframes(generateKeyframes(phoneme)).slice(
-                  -1
-                ),
+                keyframes: keyframes.slice(-1),
               },
             });
           }
@@ -617,7 +615,7 @@ const midiMapTypeRanges = {
   voiceness: { min: 0, max: 1 },
 
   "vibrato.frequency": { min: 0, max: 10 },
-  "vibrato.gain": { min: 0, max: 1 },
+  "vibrato.gain": { min: 0, max: 0.5 },
   "vibrato.wobble": { min: 0, max: 1 },
 
   tractLength: { min: 15, max: 88 },

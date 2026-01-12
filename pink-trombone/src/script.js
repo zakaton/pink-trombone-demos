@@ -163,7 +163,7 @@ const updateConstriction = throttle(() => {
   send(message);
 }, 100);
 
-let _voiceness = 0.7;
+let _voiceness = 0.9;
 function setVoiceness(voiceness, offset) {
   _voiceness = voiceness;
 
@@ -270,9 +270,9 @@ const { send } = setupConnection("pink-trombone", (message) => {
       case "phoneme":
         const { constrictions, voiced, type } = phonemes[message.phoneme];
         if (constrictions) {
-          let voiceness = 0.8;
+          let voiceness = 0.9;
           if (type == "consonant") {
-            voiceness = voiced ? 0.8 : 0.0;
+            voiceness = voiced ? 0.9 : 0.0;
           }
           setVoiceness(voiceness);
           if (!("intensity" in message)) {
