@@ -370,7 +370,7 @@ const getDownFrequency = (frequency) => {
 
 /** @type {{channel: number, number: number}?} */
 let latestNonKeyNote;
-const applyVelocityCurve = (velocity) => 0.5 ?? Math.max(0.5, velocity);
+const applyVelocityCurve = (velocity) => 0.8 ?? Math.max(0.5, velocity);
 /** @type {InputEventMap["noteon"]} */
 const onWebMidiNoteOn = (event) => {
   const { note, message, type } = event;

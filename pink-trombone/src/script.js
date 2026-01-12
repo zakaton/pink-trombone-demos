@@ -181,6 +181,9 @@ function setVoiceness(voiceness, offset) {
     },
   ];
   nodes.forEach(({ node, value }) => {
+    if (pendingNodes.has(node)) {
+      node.cancelScheduledValues(audioContext.currentTime);
+    }
     pendingNodes.add(node);
     exponentialRampToValueAtTime(node, value, offset);
   });
@@ -191,13 +194,11 @@ function updateVoiceness(tenseness) {
 
 let latestPhonemeTimestamp = 0;
 let latestPlayKeyframesTimestamp = 0;
-let lastKeyframe = false;
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
   // console.log("message", message);
   if (message.lastKeyframe) {
-    lastKeyframe = true;
     clearPendingNodes();
   }
   for (const key in message) {
@@ -393,8 +394,12 @@ const { send } = setupConnection("pink-trombone", (message) => {
     if (nodes.length > 0) {
       nodes.forEach((node) => {
         if (message.isRelative) {
-          // TEST
-          valueNumber = node.value + valueNumber;
+          if (node._value == undefined) {
+            node._value = node.value;
+          }
+          valueNumber = node._value + valueNumber;
+        } else {
+          node._value = node.value;
         }
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);
         exponentialRampToValueAtTime(node, valueNumber, 0.01);
@@ -431,6 +436,9 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
     value,
     pinkTromboneElement.audioContext.currentTime + offset
   );
+  if (pendingNodes.has(node)) {
+    node.cancelScheduledValues(audioContext.currentTime);
+  }
   pendingNodes.add(node);
 }
 
@@ -457,7 +465,7 @@ const keyframeStrings = [
 /** @type {Set<AudioParam>} */
 const pendingNodes = new Set();
 const clearPendingNodes = () => {
-  // console.log("clearPendingNodes");
+  console.log("clearPendingNodes");
   pendingNodes.forEach((node) => {
     node.cancelScheduledValues(pinkTromboneElement.audioContext.currentTime);
   });
@@ -490,6 +498,9 @@ function playKeyframes(keyframes, offset = 0) {
       let node = pinkTromboneElement;
       while (path.length) {
         node = node[path.shift()];
+      }
+      if (pendingNodes.has(node)) {
+        node.cancelScheduledValues(audioContext.currentTime);
       }
       pendingNodes.add(node);
       const offset = keyframe.time;
