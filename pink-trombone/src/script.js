@@ -195,7 +195,7 @@ let lastKeyframe = false;
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
-  //console.log("message", message);
+  // console.log("message", message);
   if (message.lastKeyframe) {
     lastKeyframe = true;
     clearPendingNodes();
@@ -392,6 +392,10 @@ const { send } = setupConnection("pink-trombone", (message) => {
     }
     if (nodes.length > 0) {
       nodes.forEach((node) => {
+        if (message.isRelative) {
+          // TEST
+          valueNumber = node.value + valueNumber;
+        }
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);
         exponentialRampToValueAtTime(node, valueNumber, 0.01);
       });

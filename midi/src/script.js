@@ -368,7 +368,7 @@ const getDownFrequency = (frequency) => {
   );
 };
 
-/** @type {MidiMapKey} */
+/** @type {{channel: number, number: number}?} */
 let latestNonKeyNote;
 const applyVelocityCurve = (velocity) => 0.5 ?? Math.max(0.5, velocity);
 /** @type {InputEventMap["noteon"]} */
@@ -382,9 +382,11 @@ const onWebMidiNoteOn = (event) => {
     onFrequency(frequency, applyVelocityCurve(attack));
   } else {
     latestNonKeyNote = { number, channel };
-    // FILL - trigger if midimap is defined
   }
   setMidiMessagePre({ type, channel, number, attack });
+  midiMaps.forEach((map) => {
+    map.onWebMidiNoteOn(event);
+  });
 };
 /** @type {InputEventMap["noteoff"]} */
 const onWebMidiNoteOff = (event) => {
@@ -394,11 +396,13 @@ const onWebMidiNoteOff = (event) => {
   if (channel == 1) {
     const frequency = Tone.Midi(number);
     offFrequency(frequency, applyVelocityCurve(release));
-  } else {
-    // FILL - trigger if midimap is defined
   }
 
   setMidiMessagePre({ type, channel, number, release });
+
+  midiMaps.forEach((map) => {
+    map.onWebMidiNoteOff(event);
+  });
 };
 
 /** @type {InputEventMap["channelaftertouch"]} */
@@ -410,6 +414,9 @@ const onWebMidiChannelAfterTouch = (event) => {
     channel,
     number: latestNonKeyNote.number,
     value,
+  });
+  midiMaps.forEach((map) => {
+    map.onWebMidiChannelAfterTouch(event);
   });
 };
 
@@ -423,6 +430,9 @@ const onWebMidiControlChange = (event) => {
     channel,
     number,
     value,
+  });
+  midiMaps.forEach((map) => {
+    map.onWebMidiControlChange(event);
   });
 };
 
@@ -543,7 +553,26 @@ const setMidiMessagePre = (message) => {
 };
 
 // MIDI MAPPING
-const midiMapValueTypes = [
+/**
+ * @typedef {"frequency" |
+ * "tongue.index" |
+ * "tongue.diameter" |
+ * "frontConstriction.index" |
+ * "frontConstriction.diameter" |
+ * "backConstriction.index" |
+ * "backConstriction.diameter" |
+ * "tenseness" |
+ * "loudness" |
+ * "intensity" |
+ * "tractLength" |
+* "voiceness" |
+* "vibrato.frequency" |
+* "vibrato.gain" |
+* "vibrato.wobble"
+* } MidiMapType
+
+/** @type {MidiMapType[]} */
+const midiMapTypes = [
   "frequency",
 
   "tongue.index",
@@ -561,14 +590,241 @@ const midiMapValueTypes = [
   "intensity",
 
   "tractLength",
+
+  "voiceness",
+
+  "vibrato.frequency",
+  "vibrato.gain",
+  "vibrato.wobble",
 ];
 
-/** @typedef {{type: string, channel: number, number: number}} MidiMapKey */
-/** @typedef {{output: string, type: string, value: any}} MidiMapValue */
-/** @typedef {Map<MidiMapKey, MidiMapValue} MidiMap */
-/** @type {MidiMap?} */
-let midiMapping;
+/** @type {Record<MidiMapType, MidiRange>} */
+const midiMapTypeRange = {
+  frequency: { min: 20, max: 990 },
 
-// FILL - add/remove mapping
-// FILL - save/load to localStorage
-// FILL - import/export mapping
+  "tongue.index": { min: 12, max: 29 },
+  "tongue.diameter": { min: 1.2, max: 4.5 },
+
+  "frontConstriction.index": { min: 28, max: 44 },
+  "frontConstriction.diameter": { min: -2, max: 3 },
+
+  "backConstriction.index": { min: 10.5, max: 16 },
+  "backConstriction.diameter": { min: -2, max: 3 },
+
+  tenseness: { min: 0, max: 1 },
+  loudness: { min: 0, max: 1 },
+  intensity: { min: 0, max: 1 },
+  voiceness: { min: 0, max: 1 },
+
+  "vibrato.frequency": { min: 0, max: 10 },
+  "vibrato.gain": { min: 0, max: 5 },
+  "vibrato.wobble": { min: 0, max: 1 },
+
+  tractLength: { min: 15, max: 88 },
+};
+
+/** @typedef {{min: number, max: number}} MidiRange */
+/**
+ * @typedef MidiMap
+ * @type {Object}
+ * @property {string} name
+ * @property {number} channel
+ * @property {number} number
+ * @property {MidiMapType} type
+ * @property {MidiRange} inputRange
+ * @property {MidiRange} outputRange
+ * @property {boolean} isRelative
+ * @property {boolean} ignore
+ * @property {InputEventMap["noteon"]} onWebMidiNoteOn
+ * @property {InputEventMap["noteoff"]} onWebMidiNoteOff
+ * @property  {InputEventMap["channelaftertouch"]} onWebMidiChannelAfterTouch
+ * @property {InputEventMap["controlchange"]} onWebMidiControlChange
+ */
+/** @type {MidiMap[]?} */
+let midiMaps = [];
+
+const mappingContainer = document.getElementById("mapping");
+/** @type {HTMLTemplateElement} */
+const mapTemplate = document.getElementById("mapTemplate");
+
+const addMapButton = document.getElementById("addMap");
+/** @param {MidiMap} map */
+const addMap = (map) => {
+  map = map ?? {
+    name: `map${midiMaps.length}`,
+    channel: 1,
+    number: 0,
+
+    type: "frequency",
+
+    inputRange: { min: 0, max: 1 },
+    outputRange: { min: 0, max: 1 },
+
+    isRelative: false,
+    ignore: false,
+  };
+  midiMaps.push(map);
+  console.log("midiMaps", midiMaps);
+
+  /** @type {HTMLElement} */
+  const mapContainer = mapTemplate.content
+    .cloneNode(true)
+    .querySelector(".map");
+
+  mapContainer.querySelector(".delete").addEventListener("click", () => {
+    mapContainer.remove();
+    midiMaps.splice(midiMaps.indexOf(map), 1);
+    console.log("midiMaps", midiMaps);
+  });
+
+  const nameInput = mapContainer.querySelector(".name");
+  nameInput.value = map.name;
+  nameInput.addEventListener("input", () => {
+    map.name = nameInput.value;
+    console.log("name", map.name);
+  });
+
+  const numberInput = mapContainer.querySelector(".number");
+  numberInput.value = map.number;
+  numberInput.addEventListener("input", () => {
+    map.number = +numberInput.value;
+    console.log("number", map.number);
+  });
+
+  const channelInput = mapContainer.querySelector(".channel");
+  channelInput.value = map.channel;
+  channelInput.addEventListener("input", () => {
+    map.channel = +channelInput.value;
+    console.log("channel", map.channel);
+  });
+
+  const inputRangeMinInput = mapContainer.querySelector(".inputRangeMin");
+  inputRangeMinInput.value = map.inputRange.min;
+  inputRangeMinInput.addEventListener("input", () => {
+    map.inputRange.min = +inputRangeMinInput.value;
+    console.log("inputRangeMin", map.inputRange.min);
+  });
+  const inputRangeMaxInput = mapContainer.querySelector(".inputRangeMax");
+  inputRangeMaxInput.value = map.inputRange.max;
+  inputRangeMaxInput.addEventListener("input", () => {
+    map.inputRange.max = +inputRangeMaxInput.value;
+    console.log("inputRangeMax", map.inputRange.max);
+  });
+
+  const outputRangeMinOutput = mapContainer.querySelector(".outputRangeMin");
+  outputRangeMinOutput.value = map.outputRange.min;
+  outputRangeMinOutput.addEventListener("input", () => {
+    map.outputRange.min = +outputRangeMinOutput.value;
+    console.log("outputRangeMin", map.outputRange.min);
+  });
+  const outputRangeMaxOutput = mapContainer.querySelector(".outputRangeMax");
+  outputRangeMaxOutput.value = map.outputRange.max;
+  outputRangeMaxOutput.addEventListener("input", () => {
+    map.outputRange.max = +outputRangeMaxOutput.value;
+    console.log("outputRangeMax", map.outputRange.max);
+  });
+
+  const typeSelect = mapContainer.querySelector(".type");
+  typeSelect.value = map.type;
+  typeSelect.addEventListener("input", () => {
+    map.type = typeSelect.value;
+    console.log("type", map.type);
+  });
+  const typeOptgroup = typeSelect.querySelector("optgroup");
+  midiMapTypes.forEach((type) => {
+    typeOptgroup.appendChild(new Option(type));
+  });
+
+  /** @type {HTMLInputElement} */
+  const autoMapCheckbox = mapContainer.querySelector(".autoMap");
+  /** @type {HTMLInputElement} */
+  const ignoreCheckbox = mapContainer.querySelector(".ignore");
+  ignoreCheckbox.checked = map.ignore;
+  ignoreCheckbox.addEventListener("input", () => {
+    map.ignore = ignoreCheckbox.checked;
+    console.log("ignore", map.ignore);
+  });
+  /** @type {HTMLInputElement} */
+  const valueInput = mapContainer.querySelector(".value");
+
+  /**
+   * @param {number} channel
+   * @param {number} number
+   */
+  const matches = (channel, number) => {
+    if (map.ignore) {
+      return false;
+    }
+    if (autoMapCheckbox.checked) {
+      channelInput.value = channel;
+      numberInput.value = number;
+      Object.assign(map, { channel, number });
+    }
+    return map.channel == channel && map.number == number;
+  };
+
+  /** @param {number} value */
+  const onValue = (value) => {
+    valueInput.value = value;
+    // FILL - lerp to input range
+    // FILL - inverseLerp to output range
+    // FILL - send
+    const { isRelative } = map;
+    _send({ [map.type]: value, isRelative });
+  };
+
+  map.onWebMidiNoteOn = (event) => {
+    const { note, message, type } = event;
+    const { channel } = message;
+    const { number, attack } = note;
+    if (!matches(channel, number)) {
+      return;
+    }
+    onValue(attack);
+  };
+  map.onWebMidiNoteOff = (event) => {
+    const { note, message, type } = event;
+    const { channel } = message;
+    const { release, number } = note;
+    if (!matches(channel, number)) {
+      return;
+    }
+    onValue(release);
+  };
+  map.onWebMidiChannelAfterTouch = (event) => {
+    const { value, message, type } = event;
+    const { channel } = message;
+    const number = latestNonKeyNote.number;
+    if (!matches(channel, number)) {
+      return;
+    }
+    onValue(value);
+  };
+  map.onWebMidiControlChange = (event) => {
+    const { value, message, controller, type } = event;
+    const { channel } = message;
+    const { number } = controller;
+    if (!matches(channel, number)) {
+      return;
+    }
+    onValue(value);
+  };
+
+  mappingContainer.appendChild(mapContainer);
+};
+addMapButton.addEventListener("click", () => {
+  addMap();
+});
+/** @type {HTMLInputElement} */
+const loadMappingInput = document.getElementById("loadMapping");
+loadMappingInput.addEventListener("input", () => {
+  // FILL
+  loadMappingInput.value = "";
+});
+const saveMappingButton = document.getElementById("saveMapping");
+saveMappingButton.addEventListener("click", () => {
+  // FILL
+});
+
+// FILL - save/load to/from localStorage
+// FILL - load from paste (file or text)

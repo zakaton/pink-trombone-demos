@@ -6,8 +6,13 @@
     <script src="https://cdn.jsdelivr.net/npm/webmidi@latest/dist/iife/webmidi.iife.js"></script>
   </head>
   <style>
-    label {
+    .block {
       display: block;
+    }
+    #mapping {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
     }
   </style>
   <body>
@@ -15,25 +20,25 @@
       <a href="../../">home</a>
     </nav>
 
-    <label>
+    <label class="block">
       Octave offset
       <input id="octaveOffset" type="number" min="-3" max="3" value="1" />
     </label>
-    <label>
+    <label class="block">
       whisper
       <input id="whisper" type="checkbox" />
     </label>
-    <label>
+    <label class="block">
       speed
       <input type="number" value="1" id="speed" step="0.1" min="0.1" max="5" />
     </label>
-    <label>Frequency: <span id="frequency"></span></label>
-    <label>Attack Velocity: <span id="attackVelocity"></span></label>
-    <label style="display: none">
-      Release Velocity: <span id="releaseVelocity"></span>
+    <label class="block">Frequency: <span id="frequency"></span></label>
+    <label class="block">
+      Attack Velocity: <span id="attackVelocity"></span>
     </label>
+    <label hidden> Release Velocity: <span id="releaseVelocity"></span> </label>
 
-    <label>
+    <label class="block">
       phoneme
       <select id="phoneme">
         <option value="">--select phoneme--</option>
@@ -41,7 +46,7 @@
         <optgroup id="consonants" label="consonants"></optgroup>
       </select>
     </label>
-    <label style="display: none">
+    <label hidden>
       utterance
       <select id="utterance">
         <option value="">--select utterance--</option>
@@ -55,8 +60,8 @@
       phoneme-to-speech
       <textarea placeholder="phonemes" id="ptsInput"></textarea>
     </label>
-
-    <label style="display: inline">
+    <br />
+    <label>
       mode
       <select id="mode">
         <optgroup label="select mode"></optgroup>
@@ -65,6 +70,98 @@
     <button id="play">play</button>
 
     <pre id="midiMessage"></pre>
+
+    <label>
+      load mapping
+      <input id="loadMapping" type="file" accept=".json,application/json" />
+    </label>
+    <br />
+    <button id="saveMapping" disabled>save mapping</button>
+    <button id="addMap">add map</button>
+
+    <br />
+    <br />
+
+    <div id="mapping">
+      <template id="mapTemplate">
+        <div class="map">
+          <label>name <input class="name" type="text" /></label>
+          <label>
+            type
+            <select class="type">
+              <optgroup label="select type"></optgroup>
+            </select>
+          </label>
+          <label>ignore <input class="ignore" type="checkbox" /></label>
+          <button class="delete">delete</button>
+          <br />
+          <label>auto map <input class="autoMap" type="checkbox" /></label>
+          <label
+            >channel
+            <input
+              class="channel"
+              type="number"
+              step="1"
+              min="1"
+              value="1"
+              max="16"
+          /></label>
+          <label
+            >number
+            <input
+              class="number"
+              type="number"
+              step="1"
+              min="0"
+              value="0"
+              max="127"
+          /></label>
+          <label>
+            value
+            <input
+              disabled
+              class="value"
+              type="number"
+              min="0"
+              max="1"
+              step="0.001"
+            />
+          </label>
+          <br />
+
+          <label>
+            input range min
+            <input
+              class="inputRangeMin"
+              type="number"
+              min="0"
+              max="1"
+              step="0.001"
+            />
+          </label>
+          <label>
+            input range max
+            <input
+              class="inputRangeMax"
+              type="number"
+              min="0"
+              max="1"
+              step="0.001"
+            />
+          </label>
+          <br />
+
+          <label>
+            output range min
+            <input class="outputRangeMin" type="number" />
+          </label>
+          <label>
+            output range max
+            <input class="outputRangeMax" type="number" />
+          </label>
+        </div>
+      </template>
+    </div>
   </body>
   <script src="/midi/src/script.js" type="module"></script>
 </html>
