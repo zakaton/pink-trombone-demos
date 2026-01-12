@@ -599,17 +599,17 @@ const midiMapTypes = [
 ];
 
 /** @type {Record<MidiMapType, MidiRange>} */
-const midiMapTypeRange = {
+const midiMapTypeRanges = {
   frequency: { min: 20, max: 990 },
 
   "tongue.index": { min: 12, max: 29 },
-  "tongue.diameter": { min: 1.2, max: 4.5 },
+  "tongue.diameter": { min: 1.7, max: 4.5 },
 
   "frontConstriction.index": { min: 28, max: 44 },
-  "frontConstriction.diameter": { min: -2, max: 3 },
+  "frontConstriction.diameter": { min: -1.6, max: 3 },
 
-  "backConstriction.index": { min: 10.5, max: 16 },
-  "backConstriction.diameter": { min: -2, max: 3 },
+  "backConstriction.index": { min: 2, max: 16 },
+  "backConstriction.diameter": { min: -1.6, max: 3 },
 
   tenseness: { min: 0, max: 1 },
   loudness: { min: 0, max: 1 },
@@ -617,7 +617,7 @@ const midiMapTypeRange = {
   voiceness: { min: 0, max: 1 },
 
   "vibrato.frequency": { min: 0, max: 10 },
-  "vibrato.gain": { min: 0, max: 5 },
+  "vibrato.gain": { min: 0, max: 1 },
   "vibrato.wobble": { min: 0, max: 1 },
 
   tractLength: { min: 15, max: 88 },
@@ -646,6 +646,17 @@ let midiMaps = [];
 const mappingContainer = document.getElementById("mapping");
 /** @type {HTMLTemplateElement} */
 const mapTemplate = document.getElementById("mapTemplate");
+
+function lerp(from, to, interpolation) {
+  return (1 - interpolation) * from + interpolation * to;
+}
+function inverseLerp(from, to, value) {
+  if (from !== to) {
+    return (value - from) / (to - from);
+  } else {
+    return 0;
+  }
+}
 
 const addMapButton = document.getElementById("addMap");
 /** @param {MidiMap} map */
@@ -711,24 +722,41 @@ const addMap = (map) => {
     console.log("inputRangeMax", map.inputRange.max);
   });
 
-  const outputRangeMinOutput = mapContainer.querySelector(".outputRangeMin");
-  outputRangeMinOutput.value = map.outputRange.min;
-  outputRangeMinOutput.addEventListener("input", () => {
-    map.outputRange.min = +outputRangeMinOutput.value;
+  /** @type {HTMLInputElement} */
+  const outputRangeMinInput = mapContainer.querySelector(".outputRangeMin");
+  outputRangeMinInput.value = map.outputRange.min;
+  outputRangeMinInput.addEventListener("input", () => {
+    map.outputRange.min = +outputRangeMinInput.value;
     console.log("outputRangeMin", map.outputRange.min);
   });
-  const outputRangeMaxOutput = mapContainer.querySelector(".outputRangeMax");
-  outputRangeMaxOutput.value = map.outputRange.max;
-  outputRangeMaxOutput.addEventListener("input", () => {
-    map.outputRange.max = +outputRangeMaxOutput.value;
+  /** @type {HTMLInputElement} */
+  const outputRangeMaxInput = mapContainer.querySelector(".outputRangeMax");
+  outputRangeMaxInput.value = map.outputRange.max;
+  outputRangeMaxInput.addEventListener("input", () => {
+    map.outputRange.max = +outputRangeMaxInput.value;
     console.log("outputRangeMax", map.outputRange.max);
   });
 
+  const updateOutputRange = () => {
+    const range = midiMapTypeRanges[map.type] ?? { min: 0, max: 1 };
+    if (false) {
+      outputRangeMinInput.min = range.min;
+      outputRangeMaxInput.max = range.max;
+    }
+    map.outputRange.min = range.min;
+    outputRangeMinInput.value = range.min;
+
+    map.outputRange.max = range.max;
+    outputRangeMaxInput.value = range.max;
+  };
+
   const typeSelect = mapContainer.querySelector(".type");
   typeSelect.value = map.type;
+  updateOutputRange();
   typeSelect.addEventListener("input", () => {
     map.type = typeSelect.value;
     console.log("type", map.type);
+    updateOutputRange();
   });
   const typeOptgroup = typeSelect.querySelector("optgroup");
   midiMapTypes.forEach((type) => {
@@ -746,6 +774,16 @@ const addMap = (map) => {
   });
   /** @type {HTMLInputElement} */
   const valueInput = mapContainer.querySelector(".value");
+  /** @type {HTMLInputElement} */
+  const outputValueInput = mapContainer.querySelector(".outputValue");
+
+  /** @type {HTMLInputElement} */
+  const isRelativeCheckbox = mapContainer.querySelector(".isRelative");
+  isRelativeCheckbox.checked = map.isRelative;
+  isRelativeCheckbox.addEventListener("input", () => {
+    map.isRelative = isRelativeCheckbox.checked;
+    console.log("isRelative", map.isRelative);
+  });
 
   /**
    * @param {number} channel
@@ -766,11 +804,30 @@ const addMap = (map) => {
   /** @param {number} value */
   const onValue = (value) => {
     valueInput.value = value;
-    // FILL - lerp to input range
-    // FILL - inverseLerp to output range
-    // FILL - send
+
+    let interpolation = inverseLerp(
+      map.inputRange.min,
+      map.inputRange.max,
+      value
+    );
+    interpolation = Math.max(0, Math.min(1, interpolation));
+
+    let outputValue = lerp(
+      map.outputRange.min,
+      map.outputRange.max,
+      interpolation
+    );
+    outputValue = Math.max(
+      map.outputRange.min,
+      Math.min(map.outputRange.max, outputValue)
+    );
+
+    outputValueInput.value = outputValue;
+
+    // console.log({ value, interpolation, outputValue });
+
     const { isRelative } = map;
-    _send({ [map.type]: value, isRelative });
+    _send({ [map.type]: outputValue, isRelative });
   };
 
   map.onWebMidiNoteOn = (event) => {
