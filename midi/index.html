@@ -6,9 +6,6 @@
     <script src="https://cdn.jsdelivr.net/npm/webmidi@latest/dist/iife/webmidi.iife.js"></script>
   </head>
   <style>
-    .block {
-      display: block;
-    }
     #mapping {
       display: flex;
       flex-direction: column;
@@ -20,25 +17,28 @@
       <a href="../../">home</a>
     </nav>
 
-    <label class="block">
+    <label>
       Octave offset
       <input id="octaveOffset" type="number" min="-3" max="3" value="1" />
     </label>
-    <label class="block">
+    <br />
+    <label>
       whisper
       <input id="whisper" type="checkbox" />
     </label>
-    <label class="block">
+    <br />
+    <label>
       speed
       <input type="number" value="1" id="speed" step="0.1" min="0.1" max="5" />
     </label>
-    <label class="block">Frequency: <span id="frequency"></span></label>
-    <label class="block">
-      Attack Velocity: <span id="attackVelocity"></span>
-    </label>
+    <br />
+    <label>Frequency: <span id="frequency"></span></label>
+    <br />
+    <label> Attack Velocity: <span id="attackVelocity"></span> </label>
+    <br />
     <label hidden> Release Velocity: <span id="releaseVelocity"></span> </label>
 
-    <label class="block">
+    <label>
       phoneme
       <select id="phoneme">
         <option value="">--select phoneme--</option>
@@ -46,6 +46,7 @@
         <optgroup id="consonants" label="consonants"></optgroup>
       </select>
     </label>
+    <br />
     <label hidden>
       utterance
       <select id="utterance">
@@ -76,8 +77,9 @@
       <input id="loadMapping" type="file" accept=".json,application/json" />
     </label>
     <br />
-    <button id="saveMapping" disabled>save mapping</button>
+    <button id="saveMapping" disabled>save maps</button>
     <button id="addMap">add map</button>
+    <button id="deleteAllMaps" disabled>delete all maps</button>
 
     <br />
     <br />
@@ -85,7 +87,6 @@
     <div id="mapping">
       <template id="mapTemplate">
         <div class="map">
-          <label>name <input class="name" type="text" /></label>
           <label>
             type
             <select class="type">

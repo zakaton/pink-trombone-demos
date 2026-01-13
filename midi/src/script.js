@@ -625,7 +625,6 @@ const midiMapTypeRanges = {
 /**
  * @typedef MidiMap
  * @type {Object}
- * @property {string} name
  * @property {number} channel
  * @property {number} number
  * @property {MidiMapType} type
@@ -635,11 +634,16 @@ const midiMapTypeRanges = {
  * @property {boolean} ignore
  * @property {InputEventMap["noteon"]} onWebMidiNoteOn
  * @property {InputEventMap["noteoff"]} onWebMidiNoteOff
- * @property  {InputEventMap["channelaftertouch"]} onWebMidiChannelAfterTouch
+ * @property {InputEventMap["channelaftertouch"]} onWebMidiChannelAfterTouch
  * @property {InputEventMap["controlchange"]} onWebMidiControlChange
+ * @property {function} delete
  */
 /** @type {MidiMap[]?} */
 let midiMaps = [];
+const stringifyMidiMaps = () => {
+  return JSON.stringify(midiMaps, null, 2);
+};
+window.stringifyMaps = stringifyMidiMaps;
 
 const mappingContainer = document.getElementById("mapping");
 /** @type {HTMLTemplateElement} */
@@ -656,11 +660,21 @@ function inverseLerp(from, to, value) {
   }
 }
 
+const deleteAllMapsButton = document.getElementById("deleteAllMaps");
+deleteAllMapsButton.addEventListener("click", () => {
+  while (midiMaps.length > 0) {
+    midiMaps[0].delete();
+  }
+});
+const updateDeleteAllMapsButton = () => {
+  deleteAllMapsButton.disabled = midiMaps.length == 0;
+};
+
 const addMapButton = document.getElementById("addMap");
 /** @param {MidiMap} map */
 const addMap = (map) => {
+  const isNew = !map;
   map = map ?? {
-    name: `map${midiMaps.length}`,
     channel: 1,
     number: 0,
 
@@ -673,24 +687,26 @@ const addMap = (map) => {
     ignore: false,
   };
   midiMaps.push(map);
-  console.log("midiMaps", midiMaps);
+  updateSaveMappingButton();
+  updateDeleteAllMapsButton();
+  //console.log("midiMaps", midiMaps);
 
   /** @type {HTMLElement} */
   const mapContainer = mapTemplate.content
     .cloneNode(true)
     .querySelector(".map");
 
-  mapContainer.querySelector(".delete").addEventListener("click", () => {
+  const _delete = () => {
     mapContainer.remove();
     midiMaps.splice(midiMaps.indexOf(map), 1);
-    console.log("midiMaps", midiMaps);
-  });
+    //console.log("midiMaps", midiMaps);
+    updateSaveMappingButton();
+    updateDeleteAllMapsButton();
+  };
+  map.delete = _delete;
 
-  const nameInput = mapContainer.querySelector(".name");
-  nameInput.value = map.name;
-  nameInput.addEventListener("input", () => {
-    map.name = nameInput.value;
-    console.log("name", map.name);
+  mapContainer.querySelector(".delete").addEventListener("click", () => {
+    _delete();
   });
 
   const numberInput = mapContainer.querySelector(".number");
@@ -749,8 +765,9 @@ const addMap = (map) => {
   };
 
   const typeSelect = mapContainer.querySelector(".type");
-  typeSelect.value = map.type;
-  updateOutputRange();
+  if (isNew) {
+    updateOutputRange();
+  }
   typeSelect.addEventListener("input", () => {
     map.type = typeSelect.value;
     console.log("type", map.type);
@@ -760,6 +777,7 @@ const addMap = (map) => {
   midiMapTypes.forEach((type) => {
     typeOptgroup.appendChild(new Option(type));
   });
+  typeSelect.value = map.type;
 
   /** @type {HTMLInputElement} */
   const autoMapCheckbox = mapContainer.querySelector(".autoMap");
@@ -872,14 +890,79 @@ addMapButton.addEventListener("click", () => {
 });
 /** @type {HTMLInputElement} */
 const loadMappingInput = document.getElementById("loadMapping");
-loadMappingInput.addEventListener("input", () => {
-  // FILL
+loadMappingInput.addEventListener("input", async () => {
+  const file = loadMappingInput.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const _midiMaps = JSON.parse(text);
+    _midiMaps.forEach((map) => addMap(map));
+  } catch (error) {
+    console.error(error);
+  }
+
   loadMappingInput.value = "";
 });
 const saveMappingButton = document.getElementById("saveMapping");
 saveMappingButton.addEventListener("click", () => {
-  // FILL
+  const blob = new Blob([stringifyMidiMaps(midiMaps)], {
+    type: "application/json",
+  });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "pinktrombone-midi-maps.json";
+  a.click();
+});
+const updateSaveMappingButton = () => {
+  saveMappingButton.disabled = midiMaps.length == 0;
+};
+
+const localStorageKey = "pinktrombone.midi";
+window.addEventListener("beforeunload", () => {
+  localStorage.setItem(localStorageKey, stringifyMidiMaps());
+});
+const loadLocalStorage = () => {
+  const midiMapsString = localStorage.getItem(localStorageKey);
+  if (midiMapsString) {
+    /** @type {MidiMap[]} */
+    const _midiMaps = JSON.parse(midiMapsString);
+    //console.log("loaded midiMaps", _midiMaps);
+    _midiMaps.forEach((map) => addMap(map));
+  }
+};
+loadLocalStorage();
+
+document.addEventListener("paste", (event) => {
+  event.preventDefault();
+
+  const text = event.clipboardData.getData("text");
+  if (text) {
+    try {
+      const _midiMaps = JSON.parse(text);
+      //console.log("pasted midiMaps", _midiMaps);
+      _midiMaps.forEach((map) => addMap(map));
+    } catch {
+      console.error("Invalid JSON");
+    }
+  }
 });
 
-// FILL - save/load to/from localStorage
-// FILL - load from paste (file or text)
+document.addEventListener("paste", async (event) => {
+  const files = event.clipboardData.files;
+  if (!files.length) return;
+
+  const file = files[0];
+  if (file.type !== "application/json") {
+    return;
+  }
+
+  try {
+    const _midiMaps = JSON.parse(await file.text());
+    //console.log("pasted midiMaps", _midiMaps);
+    _midiMaps.forEach((map) => addMap(map));
+  } catch {
+    console.error("Invalid JSON file");
+  }
+});
