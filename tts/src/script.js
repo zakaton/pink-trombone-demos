@@ -1,22 +1,45 @@
 const { send } = setupConnection("tts", (message) => {
-  const { text, phonemes } = message;
+  const {
+    text,
+    phonemes,
+    frequency,
+    time,
+    tractLength,
+    holdLastKeyframe,
+    lastKeyframe,
+    isWhispering,
+    speed,
+    playTts,
+  } = message;
+  if (isWhispering != undefined) {
+    setIsWhispering(isWhispering);
+  }
+  if (speed != undefined) {
+    setSpeed(speed);
+  }
   if (text) {
     textInput.value = text;
     textInput.dispatchEvent(new Event("input"));
-    playButton.click();
+    play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
   } else if (phonemes) {
     phonemesInput.value = phonemes;
     phonemesInput.dispatchEvent(new Event("input"));
-    playButton.click();
+    play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
+  } else if (playTts) {
+    play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
   }
 });
 
 let speed = 1;
 const speedInput = document.getElementById("speed");
 speedInput.addEventListener("input", (event) => {
-  speed = Number(event.target.value);
-  //console.log("speed", speed);
+  setSpeed(+speedInput.value);
 });
+const setSpeed = (newSpeed) => {
+  speed = newSpeed;
+  console.log({ speed });
+  speedInput.value = speed;
+};
 
 let initialFrequency = 140;
 const initialFrequencyInput = document.getElementById("initialFrequency");
@@ -60,13 +83,41 @@ function downloadJSON(json) {
 }
 
 const playButton = document.getElementById("play");
-playButton.addEventListener("click", () => {
-  const utterance = getUtterance(true);
-  throttledSend({ utterance });
-});
+playButton.addEventListener("click", () => play());
+/**
+ * @param {number?} time
+ * @param {number?} frequency
+ * @param {number?} tractLength
+ * @param {boolean?} holdLastKeyframe
+ * @param {boolean?} lastKeyframe
+ */
+const play = (time, frequency, tractLength, holdLastKeyframe, lastKeyframe) => {
+  const utterance = getUtterance(
+    time,
+    frequency,
+    tractLength,
+    lastKeyframe ? -1 : 0
+  );
+  if (holdLastKeyframe) {
+    utterance.keyframes.pop();
+  }
+  if (lastKeyframe) {
+    utterance.keyframes = utterance.keyframes.slice(-1);
+  }
+  throttledSend({ utterance, holdLastKeyframe, lastKeyframe });
+};
 
-const getUtterance = () => {
-  const utterance = { name: finalString, keyframes: renderKeyframes() };
+/**
+ * @param {number?} time
+ * @param {number?} frequency
+ * @param {number?} tractLength
+ * @param {number?} offset
+ */
+const getUtterance = (time, frequency, tractLength, offset) => {
+  const utterance = {
+    name: finalString,
+    keyframes: renderKeyframes(time, frequency, tractLength, offset),
+  };
   console.log("utterance", utterance);
   return utterance;
 };
@@ -74,10 +125,16 @@ const getUtterance = () => {
 const renderKeyframes = (
   time = 0,
   frequency = initialFrequency,
-  tractLength = initialTractLength
+  tractLength = initialTractLength,
+  offset = 0
 ) => {
   const keyframes = [];
-  resultsContainer.querySelectorAll(".result").forEach((resultContainer) => {
+  const results = resultsContainer.querySelectorAll(".result");
+  offset = offset < 0 ? results.length + offset + 1 : offset;
+  results.forEach((resultContainer, index) => {
+    if (offset != 0 && index < offset) {
+      return;
+    }
     const _keyframes = resultContainer.renderKeyframes(
       time,
       frequency,
@@ -313,7 +370,17 @@ const createResultContainer = () => {
       frequency,
       intensity: 0,
     });
-    console.log("utterance", utterance);
+    //console.log("utterance", utterance);
+    if (isWhispering) {
+      utterance.keyframes.forEach((keyframe) => {
+        Object.assign(keyframe, deconstructVoiceness(0));
+      });
+    }
+    if (phonemeSubstitutionType == "misc.slurring") {
+      utterance.keyframes.forEach((keyframe) => {
+        Object.assign(keyframe, deconstructVoiceness(0.8));
+      });
+    }
     throttledSend({ utterance });
   });
 
@@ -670,9 +737,14 @@ phonemeSubstitutionsSelect.addEventListener("input", (event) => {
 });
 
 let isWhispering = false;
+const whisperToggle = document.getElementById("whisper");
 const onWhisperInput = (event) => {
-  isWhispering = event.target.checked;
-  //console.log("isWhispering", isWhispering);
+  setIsWhispering(event.target.checked);
+};
+const setIsWhispering = (newIsWhispering) => {
+  isWhispering = newIsWhispering;
+  console.log({ isWhispering });
+  whisperToggle.checked = isWhispering;
 };
 
 let numberOfRandomPhonemes = 10;

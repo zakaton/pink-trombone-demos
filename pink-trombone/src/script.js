@@ -20,7 +20,9 @@ pinkTromboneElement.addEventListener("load", (event) => {
         audioContext.destination.channelCount = 2;
       }
 
-      pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(audioContext.destination);
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(
+        audioContext.destination
+      );
     } else {
       pinkTromboneElement.connect(pinkTromboneElement.audioContext.destination);
     }
@@ -49,8 +51,14 @@ pinkTromboneElement.addEventListener("setConstriction", (event) => {
 
     switch (event.detail.type) {
       case "linear":
-        constriction.index.linearRampToValueAtTime(indexValue, event.detail.endTime);
-        constriction.diameter.linearRampToValueAtTime(diameterValue, event.detail.endTime);
+        constriction.index.linearRampToValueAtTime(
+          indexValue,
+          event.detail.endTime
+        );
+        constriction.diameter.linearRampToValueAtTime(
+          diameterValue,
+          event.detail.endTime
+        );
         break;
       default:
         constriction.index.value = indexValue;
@@ -122,10 +130,13 @@ const updateConstriction = throttle(() => {
     constrictions: {},
   };
 
-  const constrictionIndex = pinkTromboneElement.UI._tractUI._touchConstrictionIndices[-1];
+  const constrictionIndex =
+    pinkTromboneElement.UI._tractUI._touchConstrictionIndices[-1];
   const isTongue = constrictionIndex == -1;
   if (isTongue) {
-    const { index, diameter } = deconstructConstriction(pinkTromboneElement.tongue);
+    const { index, diameter } = deconstructConstriction(
+      pinkTromboneElement.tongue
+    );
     message.constrictions.tongue = {
       index,
       diameter,
@@ -136,9 +147,13 @@ const updateConstriction = throttle(() => {
     );
     if (!(index == 0 && diameter == 0)) {
       const isBackConstriction = index < getIndexThreshold();
-      const targetConstriction = isBackConstriction ? backConstriction : frontConstriction;
+      const targetConstriction = isBackConstriction
+        ? backConstriction
+        : frontConstriction;
       setConstriction(targetConstriction, index, diameter);
-      message.constrictions[isBackConstriction ? "backConstriction" : "frontConstriction"] = {
+      message.constrictions[
+        isBackConstriction ? "backConstriction" : "frontConstriction"
+      ] = {
         index,
         diameter,
       };
@@ -148,7 +163,7 @@ const updateConstriction = throttle(() => {
   send(message);
 }, 100);
 
-let _voiceness = 0.7;
+let _voiceness = 0.9;
 function setVoiceness(voiceness, offset) {
   _voiceness = voiceness;
 
@@ -166,6 +181,7 @@ function setVoiceness(voiceness, offset) {
     },
   ];
   nodes.forEach(({ node, value }) => {
+    pendingNodes.add(node);
     exponentialRampToValueAtTime(node, value, offset);
   });
 }
@@ -173,15 +189,22 @@ function updateVoiceness(tenseness) {
   _voiceness = Math.acos(1 - tenseness) / (Math.PI * 0.5);
 }
 
+let latestPhonemeTimestamp = 0;
+let latestPlayKeyframesTimestamp = 0;
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
+  // console.log("message", message);
+  if (message.lastKeyframe) {
+    clearPendingNodes();
+  }
   for (const key in message) {
     const value = message[key];
     let valueNumber = Number(value);
     if (key.endsWith("index")) {
       valueNumber = normalizeIndex(valueNumber, message.tractLength);
     }
+
     let node;
     let nodes = [];
     switch (key) {
@@ -221,7 +244,9 @@ const { send } = setupConnection("pink-trombone", (message) => {
         node = pinkTromboneElement.intensity;
         break;
       case "frequency":
-        node = pinkTromboneElement.frequency;
+        if (!message.utterance) {
+          node = pinkTromboneElement.frequency;
+        }
         break;
       case "tractLength":
         node = pinkTromboneElement.tractLength;
@@ -245,17 +270,30 @@ const { send } = setupConnection("pink-trombone", (message) => {
       case "phoneme":
         const { constrictions, voiced, type } = phonemes[message.phoneme];
         if (constrictions) {
-          let voiceness = 0.8;
+          let voiceness = 0.9;
           if (type == "consonant") {
-            voiceness = voiced ? 0.8 : 0.0;
+            voiceness = voiced ? 0.9 : 0.0;
           }
           setVoiceness(voiceness);
           if (!("intensity" in message)) {
             exponentialRampToValueAtTime(pinkTromboneElement.intensity, 1);
-            exponentialRampToValueAtTime(pinkTromboneElement.intensity, 1, 0.1 * constrictions.length);
-            exponentialRampToValueAtTime(pinkTromboneElement.intensity, 0, 0.1 * constrictions.length + 1);
+            exponentialRampToValueAtTime(
+              pinkTromboneElement.intensity,
+              1,
+              0.1 * constrictions.length
+            );
+            exponentialRampToValueAtTime(
+              pinkTromboneElement.intensity,
+              0,
+              0.1 * constrictions.length + 1
+            );
           }
+          const phonemeTimestamp = Date.now();
+          latestPhonemeTimestamp = phonemeTimestamp;
           constrictions.forEach((constriction, index) => {
+            if (phonemeTimestamp != latestPhonemeTimestamp) {
+              return;
+            }
             const { tongue, front, back } = constriction;
             const nodes = [];
             const features = ["index", "diameter"];
@@ -283,7 +321,10 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 nodes.push(node);
               });
             } else {
-              exponentialRampToValueAtTime(frontConstriction.diameter, frontConstriction.diameter.maxValue);
+              exponentialRampToValueAtTime(
+                frontConstriction.diameter,
+                frontConstriction.diameter.maxValue
+              );
             }
             if (back) {
               features.forEach((feature) => {
@@ -297,8 +338,12 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 nodes.push(node);
               });
             } else {
-              exponentialRampToValueAtTime(backConstriction.diameter, backConstriction.diameter.maxValue);
+              exponentialRampToValueAtTime(
+                backConstriction.diameter,
+                backConstriction.diameter.maxValue
+              );
             }
+            //console.log("notes", nodes);
             nodes.forEach(({ node, value }) => {
               // FIX timing
               exponentialRampToValueAtTime(node, value, 0.04 + index * 0.1);
@@ -316,12 +361,28 @@ const { send } = setupConnection("pink-trombone", (message) => {
         } else if (value in utterances) {
           keyframes = utterances[value].keyframes;
         }
+        keyframes = structuredClone(keyframes);
         if (keyframes && keyframes.length > 0) {
-          playKeyframes(keyframes);
+          if (
+            message.holdLastKeyframe &&
+            keyframes.length > 1 &&
+            keyframes.at(-1).name == "."
+          ) {
+            keyframes.pop();
+          }
+          if (message.frequency) {
+            const baseFrequency = keyframes[0].frequency;
+            keyframes.forEach((keyframe) => {
+              const frequencyRatio = keyframe.frequency / baseFrequency;
+              keyframe.frequency = frequencyRatio * message.frequency;
+            });
+          }
+          playKeyframes(keyframes, message.lastKeyframe ? -1 : 0);
         }
         break;
       default:
-      //console.log("uncaught key", key);
+        //console.log("uncaught key", key);
+        break;
     }
 
     if (node) {
@@ -329,6 +390,14 @@ const { send } = setupConnection("pink-trombone", (message) => {
     }
     if (nodes.length > 0) {
       nodes.forEach((node) => {
+        if (message.isRelative) {
+          if (node._value == undefined) {
+            node._value = node.value;
+          }
+          valueNumber = node._value + valueNumber;
+        } else {
+          node._value = node.value;
+        }
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);
         exponentialRampToValueAtTime(node, valueNumber, 0.01);
       });
@@ -360,7 +429,11 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
     value = 0.0001;
   }
   //node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
-  node.exponentialRampToValueAtTime(value, pinkTromboneElement.audioContext.currentTime + offset);
+  node.exponentialRampToValueAtTime(
+    value,
+    pinkTromboneElement.audioContext.currentTime + offset
+  );
+  pendingNodes.add(node);
 }
 
 const keyframeStrings = [
@@ -383,7 +456,30 @@ const keyframeStrings = [
   "tractLength",
 ];
 
-function playKeyframes(keyframes) {
+/** @type {Set<AudioParam>} */
+const pendingNodes = new Set();
+const clearPendingNodes = () => {
+  //console.log("clearPendingNodes");
+  pendingNodes.forEach((node) => {
+    node.cancelScheduledValues(pinkTromboneElement.audioContext.currentTime);
+  });
+  pendingNodes.clear();
+};
+function playKeyframes(keyframes, offset = 0) {
+  clearPendingNodes();
+
+  const playKeyframesTimestamp = Date.now();
+  latestPlayKeyframesTimestamp = playKeyframesTimestamp;
+  offset = offset < 0 ? keyframes.length + offset : offset;
+  if (offset != 0) {
+    keyframes = structuredClone(keyframes);
+    const timeOffset = keyframes[offset].time - keyframes[offset - 1].time;
+    keyframes = keyframes.slice(offset);
+    keyframes.forEach((keyframe) => {
+      keyframe.time -= timeOffset;
+    });
+  }
+  //console.log("playKeyframes", keyframes);
   keyframes.forEach((keyframe) => {
     keyframeStrings.forEach((keyframeString) => {
       let value = keyframe[keyframeString];
@@ -399,8 +495,12 @@ function playKeyframes(keyframes) {
       while (path.length) {
         node = node[path.shift()];
       }
+      pendingNodes.add(node);
       const offset = keyframe.time;
-      node.linearRampToValueAtTime(value, pinkTromboneElement.audioContext.currentTime + offset);
+      node.linearRampToValueAtTime(
+        value,
+        pinkTromboneElement.audioContext.currentTime + offset
+      );
     });
   });
 }
@@ -417,7 +517,8 @@ const toggleDarkMode = () => {
     document.body.style.margin = "0px";
     document.body.style.filter = "grayscale(1)";
   } else {
-    pinkTromboneElement.UI._container.style.gridTemplateRows = "auto 200px 100px";
+    pinkTromboneElement.UI._container.style.gridTemplateRows =
+      "auto 200px 100px";
     pinkTromboneElement.UI._container.style.gridTemplateColumns = "auto 100px";
     pinkTromboneElement.UI._buttonsUI._container.style.display = "flex";
     pinkTromboneElement.UI._glottisUI._container.style.display = "";
@@ -462,7 +563,9 @@ const getMicrophone = async () => {
     updateMicrophoneSelect();
   }
   mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
-  mediaStreamSourceNode.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode);
+  mediaStreamSourceNode.connect(
+    pinkTromboneElement.pinkTrombone._pinkTromboneNode
+  );
   pinkTromboneElement.pinkTrombone._fricativeFilter.disconnect();
   pinkTromboneElement.pinkTrombone._aspirateFilter.disconnect();
 
@@ -479,8 +582,12 @@ const stopMicrophone = () => {
     debugMicrophoneButton.setAttribute("hidden", "");
     toggleMicrophoneButton.innerText = "enable microphone";
 
-    pinkTromboneElement.pinkTrombone._fricativeFilter.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise);
-    pinkTromboneElement.pinkTrombone._aspirateFilter.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise);
+    pinkTromboneElement.pinkTrombone._fricativeFilter.connect(
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+    );
+    pinkTromboneElement.pinkTrombone._aspirateFilter.connect(
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+    );
   }
 };
 
@@ -495,7 +602,9 @@ const updateMicrophoneSelect = async () => {
     microphoneSelect.removeAttribute("hidden");
     microphoneOptGroup.innerHTML = "";
     microphones.forEach((microphone) => {
-      microphoneOptGroup.appendChild(new Option(microphone.label, microphone.deviceId));
+      microphoneOptGroup.appendChild(
+        new Option(microphone.label, microphone.deviceId)
+      );
     });
     didCheckMicrophonesOnce = true;
   } else {

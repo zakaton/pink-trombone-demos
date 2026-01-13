@@ -4,21 +4,45 @@
 */
 
 const { send } = setupConnection("lip-sync", (message) => {
-  const { phoneme, utterance, results } = message;
+  const { phoneme, utterance, results, holdLastKeyframe, lastKeyframe } =
+    message;
+  _holdLastKeyframe = holdLastKeyframe;
+  //console.log("message", message);
   if (phoneme) {
     const keyframes = RenderKeyframes(generateKeyframes(phoneme));
     keyframes.pop(); // remove ".", closing the mouth
-    playKeyframes(keyframes);
-    debouncedResetMouth();
+    playKeyframes(keyframes, holdLastKeyframe, lastKeyframe);
+    if (!holdLastKeyframe) {
+      debouncedResetMouth();
+    }
   } else if (utterance) {
-    playKeyframes(utterance.keyframes);
+    let keyframes;
+    let isUtteranceIndex = false;
+    if (typeof utterance == "object") {
+      keyframes = utterance.keyframes;
+    } else if (utterance in utterances) {
+      keyframes = utterances[utterance].keyframes;
+      isUtteranceIndex = true;
+    }
+    keyframes = structuredClone(keyframes);
+    if (isUtteranceIndex) {
+      if (lastKeyframe) {
+        keyframes = keyframes.slice(-1);
+      }
+    }
+    if (holdLastKeyframe && keyframes.at(-1).name == ".") {
+      keyframes.pop(); // remove ".", closing the mouth
+    }
+    //console.log("utterance.keyframes", keyframes);
+    playKeyframes(keyframes, holdLastKeyframe, lastKeyframe);
   } else if (results) {
     const { name: phoneme } = results[0];
-    console.log("phoneme", phoneme);
     const morphTargets = phonemeToMorphTargets[phoneme];
     if (morphTargets) {
       interpolateTowardsMorphTargets(morphTargets);
-      debouncedResetMouth();
+      if (!holdLastKeyframe) {
+        debouncedResetMouth();
+      }
     }
   }
 });
@@ -26,7 +50,11 @@ const { send } = setupConnection("lip-sync", (message) => {
 const interpolateTowardsMorphTargets = (morphTargets, interpolation = 0.9) => {
   for (const name in morphTargetDictionary) {
     const key = morphTargetDictionary[name];
-    morphTargetInfluences[key] = lerp(morphTargetInfluences[key] || 0, morphTargets[name] || 0, interpolation);
+    morphTargetInfluences[key] = lerp(
+      morphTargetInfluences[key] || 0,
+      morphTargets[name] || 0,
+      interpolation
+    );
   }
 };
 
@@ -44,7 +72,8 @@ if (!isDebug) {
 let morphTargetInfluences, morphTargetDictionary;
 const avatar = document.getElementById("avatar");
 avatar.addEventListener("model-loaded", () => {
-  ({ morphTargetInfluences, morphTargetDictionary } = avatar.components["gltf-model"].model.children[0].children[1]);
+  ({ morphTargetInfluences, morphTargetDictionary } =
+    avatar.components["gltf-model"].model.children[0].children[1]);
   console.log("morphTargetDictionary", morphTargetDictionary);
   if (isDebug) {
     setupMorphTargetUI();
@@ -54,7 +83,8 @@ avatar.addEventListener("model-loaded", () => {
 const keyframes = [];
 let isAnimationRunning = false;
 let startTime;
-const playKeyframes = (_keyframes) => {
+const playKeyframes = (_keyframes, holdLastKeyframe, lastKeyframe) => {
+  //console.log(_keyframes);
   if (keyframes.length > 0) {
     const offsetTime = keyframes[keyframes.length - 1].time;
     _keyframes.forEach((keyframe) => {
@@ -65,7 +95,7 @@ const playKeyframes = (_keyframes) => {
   } else {
     keyframes.push(..._keyframes);
   }
-  //console.log("keyframes", keyframes.slice());
+  //console.log("keyframes", structuredClone(keyframes));
 
   if (!isAnimationRunning) {
     isAnimationRunning = true;
@@ -73,24 +103,39 @@ const playKeyframes = (_keyframes) => {
     requestAnimationFrame(mouthAnimationFrame);
   }
 };
+let _holdLastKeyframe = false;
 const mouthAnimationFrame = (timestamp) => {
   if (!startTime) {
     startTime = timestamp;
   }
   const timeOffset = (timestamp - startTime) / 1000;
-  const nextKeyframeIndex = keyframes.findIndex((keyframe) => keyframe.time > timeOffset);
+  const nextKeyframeIndex = keyframes.findIndex(
+    (keyframe) => keyframe.time > timeOffset
+  );
   const isFirstKeyframe = nextKeyframeIndex == 0;
   const nextKeyframe = keyframes[nextKeyframeIndex];
-  const previousKeyframe = isFirstKeyframe ? { time: 0 } : keyframes[nextKeyframeIndex - 1];
+  const previousKeyframe = isFirstKeyframe
+    ? { time: 0 }
+    : keyframes[nextKeyframeIndex - 1];
   if (nextKeyframe) {
-    const interpolation = getInterpolation(previousKeyframe.time, nextKeyframe.time, timeOffset);
-    setMouthFromPhonemes(previousKeyframe.name, nextKeyframe.name, interpolation);
+    const interpolation = getInterpolation(
+      previousKeyframe.time,
+      nextKeyframe.time,
+      timeOffset
+    );
+    setMouthFromPhonemes(
+      previousKeyframe.name,
+      nextKeyframe.name,
+      interpolation
+    );
     requestAnimationFrame(mouthAnimationFrame);
   } else {
     isAnimationRunning = false;
     keyframes.length = 0;
     //console.log("done");
-    resetMouth();
+    if (!_holdLastKeyframe) {
+      resetMouth();
+    }
   }
 };
 
@@ -127,7 +172,10 @@ const getMorphTargetsFromPhoneme = ({ phoneme, index }) => {
         morphTargets.mouthOpen = 0.5;
       }
     } else {
-      morphTargets = Object.assign(morphTargets, phonemeToMorphTargets[phoneme]);
+      morphTargets = Object.assign(
+        morphTargets,
+        phonemeToMorphTargets[phoneme]
+      );
     }
   }
   if (!morphTargets) {
@@ -155,16 +203,25 @@ const setMouthFromPhonemes = (fromPhoneme, toPhoneme, interpolation = 0) => {
 
   const fromMorphTargets = getMorphTargetsFromPhoneme(unpackedFromPhoneme);
 
-  if (unpackedFromPhoneme.index > 0 && unpackedFromPhoneme.phoneme in phonemeToMorphTargets) {
+  if (
+    unpackedFromPhoneme.index > 0 &&
+    unpackedFromPhoneme.phoneme in phonemeToMorphTargets
+  ) {
     fromPhoneme += unpackedFromPhoneme.index;
   }
 
   if (toPhoneme) {
     const toMorphTargets = getMorphTargetsFromPhoneme(unpackedToPhoneme);
-    const sharedKeys = Object.keys(fromMorphTargets).concat(Object.keys(toMorphTargets));
+    const sharedKeys = Object.keys(fromMorphTargets).concat(
+      Object.keys(toMorphTargets)
+    );
     sharedKeys.forEach((key) => {
       if (!(key in morphTargets)) {
-        morphTargets[key] = lerp(fromMorphTargets[key] || 0, toMorphTargets[key] || 0, interpolation);
+        morphTargets[key] = lerp(
+          fromMorphTargets[key] || 0,
+          toMorphTargets[key] || 0,
+          interpolation
+        );
       }
     });
   } else {
@@ -194,12 +251,15 @@ const setMouthFromMorphTargets = (morphTargets = {}) => {
       }
     }
     if (isDebug) {
-      morphTargetContainerInputs[name]?.forEach((input) => (input.value = morphTargetInfluences[key] || 0));
+      morphTargetContainerInputs[name]?.forEach(
+        (input) => (input.value = morphTargetInfluences[key] || 0)
+      );
     }
   }
 };
 
 const resetMouth = () => {
+  //console.log("resetMouth");
   setMouthFromMorphTargets({});
 };
 
@@ -367,7 +427,8 @@ for (const phoneme in phonemeToMorphTargets) {
 
     for (let i = 0; i < 3; i++) {
       if (typeof phonemeToMorphTargets[aliasedPhoneme + i]) {
-        phonemeToMorphTargets[phoneme + i] = phonemeToMorphTargets[aliasedPhoneme + i];
+        phonemeToMorphTargets[phoneme + i] =
+          phonemeToMorphTargets[aliasedPhoneme + i];
       }
     }
   }
@@ -383,11 +444,15 @@ const morphTargetTemplate = morphTargetsContainer.querySelector("template");
 const morphTargetKeysToIgnore = ["brow", "eye", "nose", "cheek"];
 const setupMorphTargetUI = () => {
   for (const name in morphTargetDictionary) {
-    if (morphTargetKeysToIgnore.some((key) => name.toLowerCase().includes(key))) {
+    if (
+      morphTargetKeysToIgnore.some((key) => name.toLowerCase().includes(key))
+    ) {
       //console.log("ignoring", name);
       continue;
     }
-    const morphTargetContainer = morphTargetTemplate.content.cloneNode(true).querySelector(".morphTarget");
+    const morphTargetContainer = morphTargetTemplate.content
+      .cloneNode(true)
+      .querySelector(".morphTarget");
     morphTargetContainer.querySelector("span").innerText = name;
     const inputs = Array.from(morphTargetContainer.querySelectorAll("input"));
     morphTargetContainerInputs[name] = inputs;
