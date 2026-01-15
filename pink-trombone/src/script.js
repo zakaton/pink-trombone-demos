@@ -163,7 +163,7 @@ const updateConstriction = throttle(() => {
   send(message);
 }, 100);
 
-let _voiceness = 0.9;
+let _voiceness = 0.8;
 function setVoiceness(voiceness, offset) {
   _voiceness = voiceness;
 
@@ -270,7 +270,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
       case "phoneme":
         const { constrictions, voiced, type } = phonemes[message.phoneme];
         if (constrictions) {
-          let voiceness = 0.9;
+          let voiceness = 0.8;
           if (type == "consonant") {
             voiceness = voiced ? 0.9 : 0.0;
           }
@@ -391,13 +391,15 @@ const { send } = setupConnection("pink-trombone", (message) => {
     if (nodes.length > 0) {
       nodes.forEach((node) => {
         if (message.isRelative) {
-          if (node._value == undefined) {
-            node._value = node.value;
-          }
-          valueNumber = node._value + valueNumber;
-        } else {
-          node._value = node.value;
+          node.relativeValue = valueNumber;
         }
+        node._value = node._value ?? node.value;
+
+        node.isRelative = message.isRelative;
+
+        valueNumber = node.isRelative
+          ? node._value + node.relativeValue
+          : valueNumber;
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);
         exponentialRampToValueAtTime(node, valueNumber, 0.01);
       });
@@ -635,4 +637,12 @@ debugMicrophoneButton.addEventListener("click", () => {
       debugMicrophoneButton.innerText = "listen to microphone";
     }
   }
+});
+
+let allNodes;
+document.addEventListener("mouseup", () => {
+  allNodes = allNodes ?? [pinkTromboneElement.frequency]; // FILL - add more when needed
+  allNodes.forEach((node) => {
+    node._value = undefined;
+  });
 });

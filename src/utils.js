@@ -1081,7 +1081,7 @@ let defaultVoiceness = 0.8;
 let defaultVoiceless = 0.2;
 const generateKeyframes = (
   pronunciation,
-  _defaultVoiceness = 0.9,
+  _defaultVoiceness = 0.8,
   _defaultVoiceless = 0.2
 ) => {
   _defaultVoiceness = _defaultVoiceness ?? defaultVoiceness;

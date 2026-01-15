@@ -596,7 +596,7 @@ const midiMapTypes = [
   "vibrato.wobble",
 ];
 
-/** @type {Record<MidiMapType, MidiRange>} */
+/** @type {Record<MidiMapType, ValueRange>} */
 const midiMapTypeRanges = {
   frequency: { min: 20, max: 990 },
 
@@ -621,15 +621,15 @@ const midiMapTypeRanges = {
   tractLength: { min: 15, max: 88 },
 };
 
-/** @typedef {{min: number, max: number}} MidiRange */
+/** @typedef {{min: number, max: number}} ValueRange */
 /**
  * @typedef MidiMap
  * @type {Object}
  * @property {number} channel
  * @property {number} number
  * @property {MidiMapType} type
- * @property {MidiRange} inputRange
- * @property {MidiRange} outputRange
+ * @property {ValueRange} inputRange
+ * @property {ValueRange} outputRange
  * @property {boolean} isRelative
  * @property {boolean} ignore
  * @property {InputEventMap["noteon"]} onWebMidiNoteOn
@@ -649,12 +649,20 @@ const mappingContainer = document.getElementById("mapping");
 /** @type {HTMLTemplateElement} */
 const mapTemplate = document.getElementById("mapTemplate");
 
-function lerp(from, to, interpolation) {
-  return (1 - interpolation) * from + interpolation * to;
+/**
+ * @param {ValueRange} range
+ * @param {number} interpolation
+ */
+function lerp(range, interpolation) {
+  return (1 - interpolation) * range.min + interpolation * range.max;
 }
-function inverseLerp(from, to, value) {
-  if (from !== to) {
-    return (value - from) / (to - from);
+/**
+ * @param {ValueRange} range
+ * @param {number} value
+ */
+function inverseLerp(range, value) {
+  if (range.min !== range.max) {
+    return (value - range.min) / (range.max - range.min);
   } else {
     return 0;
   }
@@ -763,11 +771,11 @@ const addMap = (map) => {
     map.outputRange.max = range.max;
     outputRangeMaxInput.value = range.max;
   };
-
-  const typeSelect = mapContainer.querySelector(".type");
   if (isNew) {
     updateOutputRange();
   }
+
+  const typeSelect = mapContainer.querySelector(".type");
   typeSelect.addEventListener("input", () => {
     map.type = typeSelect.value;
     console.log("type", map.type);
@@ -813,6 +821,7 @@ const addMap = (map) => {
       channelInput.value = channel;
       numberInput.value = number;
       Object.assign(map, { channel, number });
+      autoMapCheckbox.checked = false;
     }
     return map.channel == channel && map.number == number;
   };
@@ -821,18 +830,10 @@ const addMap = (map) => {
   const onValue = (value) => {
     valueInput.value = value;
 
-    let interpolation = inverseLerp(
-      map.inputRange.min,
-      map.inputRange.max,
-      value
-    );
+    let interpolation = inverseLerp(map.inputRange, value);
     interpolation = Math.max(0, Math.min(1, interpolation));
 
-    let outputValue = lerp(
-      map.outputRange.min,
-      map.outputRange.max,
-      interpolation
-    );
+    let outputValue = lerp(map.outputRange, interpolation);
     outputValue = Math.max(
       map.outputRange.min,
       Math.min(map.outputRange.max, outputValue)
