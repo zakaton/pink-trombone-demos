@@ -1,5 +1,4 @@
 const { send } = setupConnection("gamepad", (message) => {
-  // FILL
   console.log("message", message);
 });
 
@@ -417,7 +416,11 @@ window.addEventListener("gamepaddisconnected", (e) => {
 * "voiceness" |
 * "vibrato.frequency" |
 * "vibrato.gain" |
-* "vibrato.wobble"
+* "vibrato.wobble" |
+* "phoneme" |
+* "tts" |
+* "tts2" |
+* "pts"
 * } GamepadMapType
 
 /** @type {GamepadMapType[]} */
@@ -445,7 +448,38 @@ const gamepadMapTypes = [
   "vibrato.frequency",
   "vibrato.gain",
   "vibrato.wobble",
+
+  "phoneme",
+
+  "tts",
+  "tts2",
+
+  "pts",
 ];
+
+/** @param {GamepadMapType} type */
+const isTypeTrigger = (type) => {
+  switch (type) {
+    case "phoneme":
+    case "tts":
+    case "tts2":
+    case "pts":
+      return true;
+    default:
+      return false;
+  }
+};
+
+/** @param {GamepadMapType} type */
+const isTypeText = (type) => {
+  switch (type) {
+    case "tts":
+    case "pts":
+      return true;
+    default:
+      return false;
+  }
+};
 
 /** @type {Record<GamepadMapType, ValueRange>} */
 const gamepadMapTypeRanges = {
@@ -499,7 +533,10 @@ const gamepadMapInputTypes = [
  * @property {GamepadButtonChangeEvent} onButtonChange
  * @property {GamepadAxisChangeEvent} onAxisChange
  * @property {GamepadThumbstickChangeEvent} onThumbstickChange
+ * @property {(value: number, overrideIsTriggered?: boolean) => void} onValue
  * @property {function} delete
+ * @property {string} text
+ * @property {string} phoneme
  */
 /** @type {GamepadMap[]?} */
 let gamepadMaps = [];
@@ -541,6 +578,9 @@ const updateDeleteAllMapsButton = () => {
   deleteAllMapsButton.disabled = gamepadMaps.length == 0;
 };
 
+/** @type {GamepadMap[]} */
+const triggeredMaps = [];
+
 const addMapButton = document.getElementById("addMap");
 /** @param {GamepadMap} map */
 const addMap = (map) => {
@@ -556,6 +596,9 @@ const addMap = (map) => {
 
     isRelative: false,
     ignore: false,
+
+    text: "",
+    phoneme: "ɛ",
   };
   gamepadMaps.push(map);
   updateSaveMappingButton();
@@ -631,11 +674,56 @@ const addMap = (map) => {
     updateOutputRange();
   }
 
+  const textContainer = mapContainer.querySelector(".text");
+  const textInput = textContainer.querySelector("input");
+  textInput.value = map.text;
+  textInput.addEventListener("input", () => {
+    map.text = textInput.value;
+    console.log("text", map.text);
+  });
+  const updateTextInput = () => {
+    if (isTypeText(map.type)) {
+      textContainer.removeAttribute("hidden");
+    } else {
+      textContainer.setAttribute("hidden", "");
+      textInput.value = "";
+    }
+  };
+  updateTextInput();
+
+  const phonemeContainer = mapContainer.querySelector(".phoneme");
+  const phonemeSelect = phonemeContainer.querySelector("select");
+  const consonantsOptgroup = phonemeSelect.querySelector(".consonants");
+  const vowelsOptgroup = phonemeSelect.querySelector(".vowels");
+  for (const phoneme in phonemes) {
+    const { example, type } = phonemes[phoneme];
+    const option = new Option(`${phoneme} (${example})`, phoneme);
+    const optgroup = type == "consonant" ? consonantsOptgroup : vowelsOptgroup;
+    optgroup.appendChild(option);
+  }
+  phonemeSelect.value = map.phoneme;
+  phonemeSelect.addEventListener("input", () => {
+    map.phoneme = phonemeSelect.value;
+    console.log("phoneme", map.phoneme);
+  });
+  const updatePhonemeInput = () => {
+    if (map.type == "phoneme") {
+      phonemeContainer.removeAttribute("hidden");
+    } else {
+      phonemeContainer.setAttribute("hidden", "");
+    }
+  };
+  updatePhonemeInput();
+
   const typeSelect = mapContainer.querySelector(".type");
   typeSelect.addEventListener("input", () => {
     map.type = typeSelect.value;
     console.log("type", map.type);
+    latestIsTriggered = false;
+    latestValue = 0;
     updateOutputRange();
+    updateTextInput();
+    updatePhonemeInput();
   });
   const typeOptgroup = typeSelect.querySelector("optgroup");
   gamepadMapTypes.forEach((type) => {
@@ -694,8 +782,14 @@ const addMap = (map) => {
     return map.inputType == inputType && map.index == index;
   };
 
-  /** @param {number} value */
-  const onValue = (value) => {
+  let latestValue = 0;
+  let latestIsTriggered = false;
+  map.onValue = (value, overrideIsTriggered) => {
+    if (value == undefined) {
+      value = latestValue;
+    } else {
+      latestValue = value;
+    }
     valueInput.value = value;
 
     let interpolation = inverseLerp(map.inputRange, value);
@@ -707,12 +801,117 @@ const addMap = (map) => {
       Math.min(map.outputRange.max, outputValue)
     );
 
+    const isTrigger = isTypeTrigger(map.type);
+    if (isTrigger) {
+      outputValue = Math.floor(outputValue);
+    }
+
     outputValueInput.value = outputValue;
 
     // console.log({ value, interpolation, outputValue });
 
     const { isRelative } = map;
-    _send({ [map.type]: outputValue, isRelative });
+
+    if (isTrigger) {
+      const message = {};
+      const isTriggered = outputValue == 1;
+      const didIsTriggeredChange = isTriggered != latestIsTriggered;
+      // console.log({ didIsTriggeredChange });
+      if (didIsTriggeredChange || overrideIsTriggered) {
+        latestIsTriggered = isTriggered;
+        //console.log({ isTriggered });
+        if (isTriggered) {
+          Object.assign(message, {
+            intensity: 0.5,
+            holdLastKeyframe: true,
+          });
+        } else {
+          Object.assign(message, {
+            lastKeyframe: true,
+          });
+        }
+        let shouldSendMessage = true;
+
+        switch (map.type) {
+          case "phoneme":
+            if (isTriggered) {
+              Object.assign(message, {
+                utterance: {
+                  name: map.phoneme,
+                  keyframes: RenderKeyframes(generateKeyframes(map.phoneme)),
+                },
+              });
+            } else {
+              const keyframes = RenderKeyframes(generateKeyframes(map.phoneme));
+              if (keyframes.length == 1) {
+                message.intensity = 0;
+              } else {
+                Object.assign(message, {
+                  utterance: {
+                    name: map.phoneme,
+                    keyframes: keyframes.slice(-1),
+                  },
+                });
+              }
+            }
+            break;
+          case "tts":
+            if (isTriggered) {
+              const text = map.text;
+              delete message.intensity;
+              Object.assign(message, { text });
+            } else {
+              const text = map.text;
+              Object.assign(message, { text });
+            }
+            break;
+          case "tts2":
+            if (isTriggered) {
+              Object.assign(message, { playTts: true });
+              delete message.intensity;
+            } else {
+              Object.assign(message, { playTts: true });
+            }
+            break;
+          case "pts":
+            if (isTriggered) {
+              const phonemes = map.text;
+              delete message.intensity;
+              Object.assign(message, { phonemes });
+            } else {
+              const phonemes = map.text;
+              Object.assign(message, { phonemes });
+            }
+            break;
+          default:
+            console.error(`uncaught trigger type "${map.type}"`);
+            shouldSendMessage = false;
+            break;
+        }
+        if (shouldSendMessage) {
+          //console.log("sending message", message);
+          _send(message);
+        }
+
+        if (isTriggered) {
+          if (!triggeredMaps.includes(map)) {
+            triggeredMaps.push(map);
+          }
+        } else {
+          if (triggeredMaps.includes(map)) {
+            triggeredMaps.splice(triggeredMaps.indexOf(map), 1);
+            const phonemeMap = triggeredMaps.find(
+              (map) => map.type == "phoneme"
+            );
+            if (phonemeMap) {
+              phonemeMap.onValue(undefined, true);
+            }
+          }
+        }
+      }
+    } else {
+      _send({ [map.type]: outputValue, isRelative });
+    }
   };
 
   map.onAxisChange = (change) => {
@@ -720,14 +919,14 @@ const addMap = (map) => {
     if (!matches("axis", index)) {
       return;
     }
-    onValue(value);
+    map.onValue(value);
   };
   map.onButtonChange = (change) => {
     const { index, value, touched, pressed } = change;
     if (!matches("button", index)) {
       return;
     }
-    onValue(value);
+    map.onValue(value);
   };
   map.onThumbstickChange = (change) => {
     const { index } = change;
@@ -739,7 +938,7 @@ const addMap = (map) => {
     if (!matches(map.inputType, index)) {
       return;
     }
-    onValue(change[thumbstickProperty]);
+    map.onValue(change[thumbstickProperty]);
   };
 
   mappingContainer.appendChild(mapContainer);
