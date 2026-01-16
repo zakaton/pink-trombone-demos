@@ -17,7 +17,8 @@ const throttledSend = throttle((message) => {
 _send({
   "vibrato.wobble": 0.0,
   "vibrato.gain": 0.0,
-  //voiceness: 1,
+  intensity: 0,
+  voiceness: 0.8,
 });
 
 // WHISPER

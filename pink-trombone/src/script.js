@@ -397,22 +397,17 @@ const { send } = setupConnection("pink-trombone", (message) => {
         if (message.isRelative) {
           node.relativeValue = valueNumber ?? node.relativeValue;
         }
+        node.relativeValue = node.relativeValue ?? 0;
         node._value = node._value ?? node.value;
-
-        node.isRelative = message.isRelative;
 
         if (!message.isRelative) {
           node._value = valueNumber ?? node._value;
         }
 
         if (node.isFrequency) {
-          valueNumber = node.isRelative
-            ? node._value * 2 ** (node.relativeValue / 12)
-            : valueNumber;
+          valueNumber = node._value * 2 ** (node.relativeValue / 12);
         } else {
-          valueNumber = node.isRelative
-            ? node._value + node.relativeValue
-            : valueNumber;
+          valueNumber = node._value + node.relativeValue;
         }
 
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);
