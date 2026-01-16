@@ -882,7 +882,7 @@ const addMap = (map) => {
         switch (map.type) {
           case "phoneme":
             if (isTriggered) {
-              //console.log({ latestFrequency });
+              // console.log({ latestFrequency });
               Object.assign(message, {
                 utterance: {
                   name: map.phoneme,
