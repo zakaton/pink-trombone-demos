@@ -868,18 +868,21 @@ const addMap = (map) => {
           Object.assign(message, {
             intensity: 0.5,
             holdLastKeyframe: true,
+            frequency: latestFrequency,
           });
         } else {
           Object.assign(message, {
             lastKeyframe: true,
+            frequency: latestFrequency,
           });
         }
+        // console.log({ latestFrequency });
         let shouldSendMessage = true;
 
         switch (map.type) {
           case "phoneme":
             if (isTriggered) {
-              console.log({ latestFrequency });
+              //console.log({ latestFrequency });
               Object.assign(message, {
                 utterance: {
                   name: map.phoneme,

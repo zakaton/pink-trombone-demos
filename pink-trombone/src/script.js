@@ -395,14 +395,14 @@ const { send } = setupConnection("pink-trombone", (message) => {
     if (nodes.length > 0) {
       nodes.forEach((node) => {
         if (message.isRelative) {
-          node.relativeValue = valueNumber;
+          node.relativeValue = valueNumber ?? node.relativeValue;
         }
         node._value = node._value ?? node.value;
 
         node.isRelative = message.isRelative;
 
         if (!message.isRelative) {
-          node._value = valueNumber;
+          node._value = valueNumber ?? node._value;
         }
 
         if (node.isFrequency) {
