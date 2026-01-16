@@ -4,8 +4,12 @@ autoResumeAudioContext(audioContext);
 const pinkTromboneElement = document.querySelector("pink-trombone");
 let frontConstriction, backConstriction;
 
+let frequencyNode;
 pinkTromboneElement.addEventListener("load", (event) => {
   pinkTromboneElement.setAudioContext(audioContext).then((pinkTrombone) => {
+    frequencyNode = pinkTromboneElement.frequency;
+    frequencyNode.isFrequency = true;
+
     pinkTromboneElement.enableUI();
     pinkTromboneElement.startUI();
     const { audioContext } = pinkTromboneElement;
@@ -194,7 +198,7 @@ let latestPlayKeyframesTimestamp = 0;
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
-  // console.log("message", message);
+  //console.log("message", message);
   if (message.lastKeyframe) {
     clearPendingNodes();
   }
@@ -397,9 +401,20 @@ const { send } = setupConnection("pink-trombone", (message) => {
 
         node.isRelative = message.isRelative;
 
-        valueNumber = node.isRelative
-          ? node._value + node.relativeValue
-          : valueNumber;
+        if (!message.isRelative) {
+          node._value = valueNumber;
+        }
+
+        if (node.isFrequency) {
+          valueNumber = node.isRelative
+            ? node._value * 2 ** (node.relativeValue / 12)
+            : valueNumber;
+        } else {
+          valueNumber = node.isRelative
+            ? node._value + node.relativeValue
+            : valueNumber;
+        }
+
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);
         exponentialRampToValueAtTime(node, valueNumber, 0.01);
       });
@@ -430,7 +445,7 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
   if (value == 0) {
     value = 0.0001;
   }
-  //node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
+  node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
   node.exponentialRampToValueAtTime(
     value,
     pinkTromboneElement.audioContext.currentTime + offset

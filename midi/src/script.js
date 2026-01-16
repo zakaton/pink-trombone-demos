@@ -625,7 +625,10 @@ const midiMapTypes = [
 
 /** @type {Record<MidiMapType, ValueRange>} */
 const midiMapTypeRanges = {
-  frequency: { min: 20, max: 990 },
+  frequency: {
+    min: Tone.Frequency(20).toMidi(),
+    max: Tone.Frequency(990).toMidi(),
+  },
 
   "tongue.index": { min: 12, max: 29 },
   "tongue.diameter": { min: 1.7, max: 4.5 },
@@ -861,9 +864,6 @@ const addMap = (map) => {
 
     let interpolation = inverseLerp(map.inputRange, value);
     interpolation = Math.max(0, Math.min(1, interpolation));
-    if (map.type == "frequency") {
-      interpolation = Math.pow(2, interpolation) - 1;
-    }
     interpolationInput.value = interpolation;
 
     let outputValue = lerp(map.outputRange, interpolation);
@@ -873,6 +873,9 @@ const addMap = (map) => {
     );
 
     outputValueInput.value = outputValue;
+    if (map.type == "frequency" && !map.isRelative) {
+      outputValue = Tone.Midi(outputValue).toFrequency();
+    }
 
     // console.log({ value, interpolation, outputValue });
 

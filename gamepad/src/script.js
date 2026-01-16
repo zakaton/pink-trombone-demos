@@ -14,6 +14,12 @@ const throttledSend = throttle((message) => {
   _send(message);
 }, 100);
 
+_send({
+  "vibrato.wobble": 0.0,
+  "vibrato.gain": 0.0,
+  //voiceness: 1,
+});
+
 // WHISPER
 let isWhispering = false;
 const whisperCheckbox = document.getElementById("whisper");
@@ -483,7 +489,10 @@ const isTypeText = (type) => {
 
 /** @type {Record<GamepadMapType, ValueRange>} */
 const gamepadMapTypeRanges = {
-  frequency: { min: 20, max: 990 },
+  frequency: {
+    min: Tone.Frequency(20).toMidi(),
+    max: Tone.Frequency(990).toMidi(),
+  },
 
   "tongue.index": { min: 12, max: 29 },
   "tongue.diameter": { min: 1.7, max: 4.5 },
@@ -821,24 +830,28 @@ const addMap = (map) => {
 
     let interpolation = inverseLerp(map.inputRange, value);
     interpolation = Math.max(0, Math.min(1, interpolation));
-    if (map.type == "frequency") {
-      interpolation = Math.pow(2, interpolation) - 1;
-    }
     interpolationInput.value = interpolation;
     const isTrigger = isTypeTrigger(map.type) || map.isTrigger;
+    const isTriggered = isTrigger && interpolation == 1;
     if (isTrigger) {
       interpolation = Math.floor(interpolation);
     }
 
     let outputValue = lerp(map.outputRange, interpolation);
-    outputValue = Math.max(
-      map.outputRange.min,
-      Math.min(map.outputRange.max, outputValue)
-    );
+    // outputValue = Math.max(
+    //   map.outputRange.min,
+    //   Math.min(map.outputRange.max, outputValue)
+    // );
     outputValueInput.value = outputValue;
 
-    if (map.type == "frequency") {
+    if (
+      map.type == "frequency" &&
+      !map.isRelative &&
+      (!isTrigger || isTriggered)
+    ) {
+      outputValue = Tone.Midi(outputValue).toFrequency();
       latestFrequency = outputValue;
+      // console.log({ latestFrequency });
     }
 
     // console.log({ value, interpolation, outputValue });
@@ -847,7 +860,6 @@ const addMap = (map) => {
 
     if (isTrigger) {
       const message = {};
-      const isTriggered = interpolation == 1;
       const didIsTriggeredChange = isTriggered != latestIsTriggered;
       if (didIsTriggeredChange || overrideIsTriggered) {
         latestIsTriggered = isTriggered;
@@ -867,6 +879,7 @@ const addMap = (map) => {
         switch (map.type) {
           case "phoneme":
             if (isTriggered) {
+              console.log({ latestFrequency });
               Object.assign(message, {
                 utterance: {
                   name: map.phoneme,
@@ -926,6 +939,7 @@ const addMap = (map) => {
             }
             break;
           case "frequency":
+            message.isRelative = map.isRelative;
             if (isTriggered) {
               delete message.intensity;
               message.frequency = outputValue;
@@ -975,7 +989,9 @@ const addMap = (map) => {
         }
       }
     } else {
-      _send({ [map.type]: outputValue, isRelative });
+      const message = { [map.type]: outputValue, isRelative };
+      //console.log("sending message", message);
+      _send(message);
     }
   };
 
@@ -1058,16 +1074,15 @@ const loadLocalStorage = () => {
 loadLocalStorage();
 
 document.addEventListener("paste", (event) => {
-  event.preventDefault();
-
   const text = event.clipboardData.getData("text");
   if (text) {
     try {
       const _gamepadMaps = JSON.parse(text);
       //console.log("pasted gamepadMaps", _gamepadMaps);
       _gamepadMaps.forEach((map) => addMap(map));
+      event.preventDefault();
     } catch {
-      console.error("Invalid JSON");
+      //console.log("Invalid JSON");
     }
   }
 });
