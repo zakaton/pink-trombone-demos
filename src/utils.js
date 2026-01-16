@@ -1185,6 +1185,7 @@ const generateKeyframes = (
 };
 
 const RenderKeyframes = (keyframes, time = 0, frequency = 140, speed = 1) => {
+  frequency = frequency ?? 140;
   const _keyframes = [];
   keyframes.forEach((keyframe) => {
     const _keyframe = Object.assign({}, keyframe);

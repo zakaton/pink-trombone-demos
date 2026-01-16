@@ -178,7 +178,12 @@ const onFrequency = (frequency, velocity = 0.5, override = false) => {
           Object.assign(message, {
             utterance: {
               name: phoneme,
-              keyframes: RenderKeyframes(generateKeyframes(phoneme)),
+              keyframes: RenderKeyframes(
+                generateKeyframes(phoneme),
+                0,
+                latestFrequency.toFrequency(),
+                speed
+              ),
             },
           });
         } else {
@@ -264,7 +269,12 @@ const offFrequency = (frequency, velocity = 0.5) => {
       } else {
         const phoneme = phonemeSelect.value;
         if (phoneme.length > 0) {
-          const keyframes = RenderKeyframes(generateKeyframes(phoneme));
+          const keyframes = RenderKeyframes(
+            generateKeyframes(phoneme),
+            0,
+            latestFrequency.toFrequency(),
+            speed
+          );
           if (keyframes.length == 1) {
             message.intensity = 0;
           } else {
@@ -818,6 +828,8 @@ const addMap = (map) => {
   const valueInput = mapContainer.querySelector(".value");
   /** @type {HTMLInputElement} */
   const outputValueInput = mapContainer.querySelector(".outputValue");
+  /** @type {HTMLInputElement} */
+  const interpolationInput = mapContainer.querySelector(".interpolation");
 
   /** @type {HTMLInputElement} */
   const isRelativeCheckbox = mapContainer.querySelector(".isRelative");
@@ -849,6 +861,10 @@ const addMap = (map) => {
 
     let interpolation = inverseLerp(map.inputRange, value);
     interpolation = Math.max(0, Math.min(1, interpolation));
+    if (map.type == "frequency") {
+      interpolation = Math.pow(2, interpolation) - 1;
+    }
+    interpolationInput.value = interpolation;
 
     let outputValue = lerp(map.outputRange, interpolation);
     outputValue = Math.max(

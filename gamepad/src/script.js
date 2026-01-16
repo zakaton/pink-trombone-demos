@@ -537,6 +537,7 @@ const gamepadMapInputTypes = [
  * @property {function} delete
  * @property {string} text
  * @property {string} phoneme
+ * @property {boolean} isTrigger
  */
 /** @type {GamepadMap[]?} */
 let gamepadMaps = [];
@@ -581,6 +582,8 @@ const updateDeleteAllMapsButton = () => {
 /** @type {GamepadMap[]} */
 const triggeredMaps = [];
 
+let latestFrequency;
+
 const addMapButton = document.getElementById("addMap");
 /** @param {GamepadMap} map */
 const addMap = (map) => {
@@ -599,6 +602,8 @@ const addMap = (map) => {
 
     text: "",
     phoneme: "ɛ",
+
+    isTrigger: false,
   };
   gamepadMaps.push(map);
   updateSaveMappingButton();
@@ -715,6 +720,25 @@ const addMap = (map) => {
   };
   updatePhonemeInput();
 
+  /** @type {HTMLInputElement} */
+  const triggerCheckbox = mapContainer.querySelector(".isTrigger");
+  triggerCheckbox.checked = map.isTrigger;
+  triggerCheckbox.addEventListener("input", () => {
+    map.isTrigger = triggerCheckbox.checked;
+    console.log("trigger", map.isTrigger);
+  });
+  const updateTriggerInput = () => {
+    const isTrigger = isTypeTrigger(map.type);
+    triggerCheckbox.disabled = isTrigger;
+
+    if (isTrigger) {
+      triggerCheckbox.checked = true;
+      map.isTrigger = true;
+    } else {
+    }
+  };
+  updateTriggerInput();
+
   const typeSelect = mapContainer.querySelector(".type");
   typeSelect.addEventListener("input", () => {
     map.type = typeSelect.value;
@@ -724,6 +748,7 @@ const addMap = (map) => {
     updateOutputRange();
     updateTextInput();
     updatePhonemeInput();
+    updateTriggerInput();
   });
   const typeOptgroup = typeSelect.querySelector("optgroup");
   gamepadMapTypes.forEach((type) => {
@@ -756,6 +781,8 @@ const addMap = (map) => {
   const valueInput = mapContainer.querySelector(".value");
   /** @type {HTMLInputElement} */
   const outputValueInput = mapContainer.querySelector(".outputValue");
+  /** @type {HTMLInputElement} */
+  const interpolationInput = mapContainer.querySelector(".interpolation");
 
   /** @type {HTMLInputElement} */
   const isRelativeCheckbox = mapContainer.querySelector(".isRelative");
@@ -794,19 +821,25 @@ const addMap = (map) => {
 
     let interpolation = inverseLerp(map.inputRange, value);
     interpolation = Math.max(0, Math.min(1, interpolation));
+    if (map.type == "frequency") {
+      interpolation = Math.pow(2, interpolation) - 1;
+    }
+    interpolationInput.value = interpolation;
+    const isTrigger = isTypeTrigger(map.type) || map.isTrigger;
+    if (isTrigger) {
+      interpolation = Math.floor(interpolation);
+    }
 
     let outputValue = lerp(map.outputRange, interpolation);
     outputValue = Math.max(
       map.outputRange.min,
       Math.min(map.outputRange.max, outputValue)
     );
-
-    const isTrigger = isTypeTrigger(map.type);
-    if (isTrigger) {
-      outputValue = Math.floor(outputValue);
-    }
-
     outputValueInput.value = outputValue;
+
+    if (map.type == "frequency") {
+      latestFrequency = outputValue;
+    }
 
     // console.log({ value, interpolation, outputValue });
 
@@ -814,12 +847,11 @@ const addMap = (map) => {
 
     if (isTrigger) {
       const message = {};
-      const isTriggered = outputValue == 1;
+      const isTriggered = interpolation == 1;
       const didIsTriggeredChange = isTriggered != latestIsTriggered;
-      // console.log({ didIsTriggeredChange });
       if (didIsTriggeredChange || overrideIsTriggered) {
         latestIsTriggered = isTriggered;
-        //console.log({ isTriggered });
+        //console.log({ isTriggered }, gamepadMaps.indexOf(map));
         if (isTriggered) {
           Object.assign(message, {
             intensity: 0.5,
@@ -838,11 +870,21 @@ const addMap = (map) => {
               Object.assign(message, {
                 utterance: {
                   name: map.phoneme,
-                  keyframes: RenderKeyframes(generateKeyframes(map.phoneme)),
+                  keyframes: RenderKeyframes(
+                    generateKeyframes(map.phoneme),
+                    0,
+                    latestFrequency,
+                    speed
+                  ),
                 },
               });
             } else {
-              const keyframes = RenderKeyframes(generateKeyframes(map.phoneme));
+              const keyframes = RenderKeyframes(
+                generateKeyframes(map.phoneme),
+                0,
+                latestFrequency,
+                speed
+              );
               if (keyframes.length == 1) {
                 message.intensity = 0;
               } else {
@@ -881,6 +923,29 @@ const addMap = (map) => {
             } else {
               const phonemes = map.text;
               Object.assign(message, { phonemes });
+            }
+            break;
+          case "frequency":
+            if (isTriggered) {
+              delete message.intensity;
+              message.frequency = outputValue;
+            } else {
+              shouldSendMessage = false;
+            }
+            break;
+          case "intensity":
+            if (isTriggered) {
+              message.intensity = outputValue;
+            } else {
+              shouldSendMessage = false;
+            }
+            break;
+          case "voiceness":
+            if (isTriggered) {
+              delete message.intensity;
+              message.voiceness = outputValue;
+            } else {
+              shouldSendMessage = false;
             }
             break;
           default:
