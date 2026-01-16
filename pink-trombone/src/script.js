@@ -394,20 +394,25 @@ const { send } = setupConnection("pink-trombone", (message) => {
     }
     if (nodes.length > 0) {
       nodes.forEach((node) => {
+        node.relativeValues = node.relativeValues ?? {};
         if (message.isRelative) {
-          node.relativeValue = valueNumber ?? node.relativeValue;
+          node.relativeValues[message.relativeValueKey] = valueNumber;
         }
-        node.relativeValue = node.relativeValue ?? 0;
         node._value = node._value ?? node.value;
 
         if (!message.isRelative) {
           node._value = valueNumber ?? node._value;
         }
 
+        let relativeValue = 0;
+        Object.values(node.relativeValues).forEach((value) => {
+          relativeValue += value;
+        });
+
         if (node.isFrequency) {
-          valueNumber = node._value * 2 ** (node.relativeValue / 12);
+          valueNumber = node._value * 2 ** (relativeValue / 12);
         } else {
-          valueNumber = node._value + node.relativeValue;
+          valueNumber = node._value + relativeValue;
         }
 
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);

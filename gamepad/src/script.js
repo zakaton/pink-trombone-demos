@@ -18,7 +18,7 @@ _send({
   "vibrato.wobble": 0.0,
   "vibrato.gain": 0.0,
   intensity: 0,
-  voiceness: 0.8,
+  voiceness: 0.9,
 });
 
 // WHISPER
@@ -858,6 +858,7 @@ const addMap = (map) => {
     // console.log({ value, interpolation, outputValue });
 
     const { isRelative } = map;
+    const relativeValueKey = `${map.index}.${map.inputType}`;
 
     if (isTrigger) {
       const message = {};
@@ -943,7 +944,8 @@ const addMap = (map) => {
             }
             break;
           case "frequency":
-            message.isRelative = map.isRelative;
+            message.isRelative = isRelative;
+            message.relativeValueKey = relativeValueKey;
             if (isTriggered) {
               delete message.intensity;
               message.frequency = outputValue;
@@ -993,7 +995,7 @@ const addMap = (map) => {
         }
       }
     } else {
-      const message = { [map.type]: outputValue, isRelative };
+      const message = { [map.type]: outputValue, isRelative, relativeValueKey };
       //console.log("sending message", message);
       _send(message);
     }
