@@ -394,9 +394,25 @@ const { send } = setupConnection("pink-trombone", (message) => {
     }
     if (nodes.length > 0) {
       nodes.forEach((node) => {
-        node.relativeValues = node.relativeValues ?? {};
+        node.relativeValues = node.relativeValues ?? [];
         if (message.isRelative) {
-          node.relativeValues[message.relativeValueKey] = valueNumber;
+          const relativeValueObject = node.relativeValues.find(
+            ({ key }) => key == message.relativeValueKey
+          );
+          if (relativeValueObject) {
+            relativeValueObject.value = valueNumber;
+            if (relativeValueObject.value == 0) {
+              node.relativeValues.splice(
+                node.relativeValues.indexOf(relativeValueObject),
+                1
+              );
+            }
+          } else if (valueNumber != 0) {
+            node.relativeValues.push({
+              value: valueNumber,
+              key: message.relativeValueKey,
+            });
+          }
         }
         node._value = node._value ?? node.value;
 
@@ -405,12 +421,17 @@ const { send } = setupConnection("pink-trombone", (message) => {
         }
 
         let relativeValue = 0;
-        Object.values(node.relativeValues).forEach((value) => {
-          relativeValue += value;
-        });
+        if (true) {
+          relativeValue = node.relativeValues.at(-1)?.value ?? 0;
+        } else {
+          node.relativeValues.forEach(({ value }) => {
+            relativeValue += value;
+          });
+        }
 
         if (node.isFrequency) {
           valueNumber = node._value * 2 ** (relativeValue / 12);
+          //console.log("frequency", valueNumber);
         } else {
           valueNumber = node._value + relativeValue;
         }
