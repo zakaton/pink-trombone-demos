@@ -137,20 +137,22 @@ const throttledOffFrequencySend = throttle((message) => {
 let ignoreMidi = false;
 let latestFrequency = Tone.Frequency("C4");
 /** @param {Frequency} frequency */
-const onFrequency = (frequency, velocity = 0.5) => {
+const onFrequency = (frequency, velocity = 0.5, override = false) => {
   if (ignoreMidi) {
     return;
   }
-  clearDownFrequencies();
+  //clearDownFrequencies();
   const index = getDownFrequencyIndex(frequency);
-  if (index != -1) {
+  if (index != -1 && !override) {
     return;
   }
-  if (downFrequencies.length >= maxDownFrequencyLength) {
-    return;
-  }
+  // if (downFrequencies.length >= maxDownFrequencyLength) {
+  //   return;
+  // }
 
-  downFrequencies.push(frequency);
+  if (!downFrequencies.includes(frequency)) {
+    downFrequencies.push(frequency);
+  }
   // console.log({ note: frequency.toNote(), downFrequencies });
 
   frequencySpan.innerText = `${frequency.toNote()} (${Math.round(
@@ -176,7 +178,12 @@ const onFrequency = (frequency, velocity = 0.5) => {
           Object.assign(message, {
             utterance: {
               name: phoneme,
-              keyframes: RenderKeyframes(generateKeyframes(phoneme)),
+              keyframes: RenderKeyframes(
+                generateKeyframes(phoneme),
+                0,
+                latestFrequency.toFrequency(),
+                speed
+              ),
             },
           });
         } else {
@@ -230,6 +237,8 @@ const offFrequency = (frequency, velocity = 0.5) => {
   const downFrequencyIndex = getDownFrequencyIndex(frequency);
   const downFrequency = downFrequencies[downFrequencyIndex];
 
+  const isPlaying = downFrequencyIndex == downFrequencies.length - 1;
+
   if (downFrequency) {
     downFrequencies.splice(downFrequencyIndex, 1);
   } else {
@@ -240,6 +249,10 @@ const offFrequency = (frequency, velocity = 0.5) => {
   //console.log({ note: frequency.toNote(), downFrequencies });
 
   releaseVelocitySpan.innerText = velocity.toFixed(2);
+
+  if (!isPlaying) {
+    return;
+  }
 
   let message = {
     frequency: frequency.toFrequency(),
@@ -256,7 +269,12 @@ const offFrequency = (frequency, velocity = 0.5) => {
       } else {
         const phoneme = phonemeSelect.value;
         if (phoneme.length > 0) {
-          const keyframes = RenderKeyframes(generateKeyframes(phoneme));
+          const keyframes = RenderKeyframes(
+            generateKeyframes(phoneme),
+            0,
+            latestFrequency.toFrequency(),
+            speed
+          );
           if (keyframes.length == 1) {
             message.intensity = 0;
           } else {
@@ -303,6 +321,15 @@ const offFrequency = (frequency, velocity = 0.5) => {
   }
   // console.log("sending message", message);
   _send(message);
+
+  if (downFrequencies.length > 0) {
+    switch (mode) {
+      case "pitch":
+      case "phoneme":
+        onFrequency(downFrequencies.at(-1), undefined, true);
+        break;
+    }
+  }
 
   playButton.innerText = "play";
 };
@@ -596,9 +623,12 @@ const midiMapTypes = [
   "vibrato.wobble",
 ];
 
-/** @type {Record<MidiMapType, MidiRange>} */
+/** @type {Record<MidiMapType, ValueRange>} */
 const midiMapTypeRanges = {
-  frequency: { min: 20, max: 990 },
+  frequency: {
+    min: Tone.Frequency(20).toMidi(),
+    max: Tone.Frequency(990).toMidi(),
+  },
 
   "tongue.index": { min: 12, max: 29 },
   "tongue.diameter": { min: 1.7, max: 4.5 },
@@ -621,15 +651,15 @@ const midiMapTypeRanges = {
   tractLength: { min: 15, max: 88 },
 };
 
-/** @typedef {{min: number, max: number}} MidiRange */
+/** @typedef {{min: number, max: number}} ValueRange */
 /**
  * @typedef MidiMap
  * @type {Object}
  * @property {number} channel
  * @property {number} number
  * @property {MidiMapType} type
- * @property {MidiRange} inputRange
- * @property {MidiRange} outputRange
+ * @property {ValueRange} inputRange
+ * @property {ValueRange} outputRange
  * @property {boolean} isRelative
  * @property {boolean} ignore
  * @property {InputEventMap["noteon"]} onWebMidiNoteOn
@@ -637,6 +667,7 @@ const midiMapTypeRanges = {
  * @property {InputEventMap["channelaftertouch"]} onWebMidiChannelAfterTouch
  * @property {InputEventMap["controlchange"]} onWebMidiControlChange
  * @property {function} delete
+ * @property {(value: number) => void} onValue
  */
 /** @type {MidiMap[]?} */
 let midiMaps = [];
@@ -649,12 +680,20 @@ const mappingContainer = document.getElementById("mapping");
 /** @type {HTMLTemplateElement} */
 const mapTemplate = document.getElementById("mapTemplate");
 
-function lerp(from, to, interpolation) {
-  return (1 - interpolation) * from + interpolation * to;
+/**
+ * @param {ValueRange} range
+ * @param {number} interpolation
+ */
+function lerp(range, interpolation) {
+  return (1 - interpolation) * range.min + interpolation * range.max;
 }
-function inverseLerp(from, to, value) {
-  if (from !== to) {
-    return (value - from) / (to - from);
+/**
+ * @param {ValueRange} range
+ * @param {number} value
+ */
+function inverseLerp(range, value) {
+  if (range.min !== range.max) {
+    return (value - range.min) / (range.max - range.min);
   } else {
     return 0;
   }
@@ -763,11 +802,11 @@ const addMap = (map) => {
     map.outputRange.max = range.max;
     outputRangeMaxInput.value = range.max;
   };
-
-  const typeSelect = mapContainer.querySelector(".type");
   if (isNew) {
     updateOutputRange();
   }
+
+  const typeSelect = mapContainer.querySelector(".type");
   typeSelect.addEventListener("input", () => {
     map.type = typeSelect.value;
     console.log("type", map.type);
@@ -792,6 +831,8 @@ const addMap = (map) => {
   const valueInput = mapContainer.querySelector(".value");
   /** @type {HTMLInputElement} */
   const outputValueInput = mapContainer.querySelector(".outputValue");
+  /** @type {HTMLInputElement} */
+  const interpolationInput = mapContainer.querySelector(".interpolation");
 
   /** @type {HTMLInputElement} */
   const isRelativeCheckbox = mapContainer.querySelector(".isRelative");
@@ -813,32 +854,28 @@ const addMap = (map) => {
       channelInput.value = channel;
       numberInput.value = number;
       Object.assign(map, { channel, number });
+      autoMapCheckbox.checked = false;
     }
     return map.channel == channel && map.number == number;
   };
 
-  /** @param {number} value */
-  const onValue = (value) => {
+  map.onValue = (value) => {
     valueInput.value = value;
 
-    let interpolation = inverseLerp(
-      map.inputRange.min,
-      map.inputRange.max,
-      value
-    );
+    let interpolation = inverseLerp(map.inputRange, value);
     interpolation = Math.max(0, Math.min(1, interpolation));
+    interpolationInput.value = interpolation;
 
-    let outputValue = lerp(
-      map.outputRange.min,
-      map.outputRange.max,
-      interpolation
-    );
+    let outputValue = lerp(map.outputRange, interpolation);
     outputValue = Math.max(
       map.outputRange.min,
       Math.min(map.outputRange.max, outputValue)
     );
 
     outputValueInput.value = outputValue;
+    if (map.type == "frequency" && !map.isRelative) {
+      outputValue = Tone.Midi(outputValue).toFrequency();
+    }
 
     // console.log({ value, interpolation, outputValue });
 
@@ -853,7 +890,7 @@ const addMap = (map) => {
     if (!matches(channel, number)) {
       return;
     }
-    onValue(attack);
+    map.onValue(attack);
   };
   map.onWebMidiNoteOff = (event) => {
     const { note, message, type } = event;
@@ -862,7 +899,7 @@ const addMap = (map) => {
     if (!matches(channel, number)) {
       return;
     }
-    onValue(release);
+    map.onValue(release);
   };
   map.onWebMidiChannelAfterTouch = (event) => {
     const { value, message, type } = event;
@@ -871,7 +908,7 @@ const addMap = (map) => {
     if (!matches(channel, number)) {
       return;
     }
-    onValue(value);
+    map.onValue(value);
   };
   map.onWebMidiControlChange = (event) => {
     const { value, message, controller, type } = event;
@@ -880,7 +917,7 @@ const addMap = (map) => {
     if (!matches(channel, number)) {
       return;
     }
-    onValue(value);
+    map.onValue(value);
   };
 
   mappingContainer.appendChild(mapContainer);

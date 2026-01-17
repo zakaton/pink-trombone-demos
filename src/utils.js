@@ -621,8 +621,8 @@ const phonemes = {
     example: "who",
     constrictions: {
       tongue: {
-        index: 20.89373207092285,
-        diameter: 2.8037023544311523,
+        index: false ? 12.383986473083496 : 20.89373207092285,
+        diameter: false ? 2.329972982406616 : 2.8037023544311523,
       },
       front: {
         index: 39.59186553955078,
@@ -1015,6 +1015,7 @@ const utterances = [
 function deconstructVoiceness(voiceness) {
   const tenseness = 1 - Math.cos(voiceness * Math.PI * 0.5);
   const loudness = Math.pow(tenseness, 0.25);
+  //console.log({ voiceness, tenseness, loudness });
   return { tenseness, loudness };
 }
 
@@ -1077,7 +1078,7 @@ let spaceTime = 0;
 let releaseTime = 0.1;
 let timeBetweenPhonemes = 0.1;
 let timeBetweenSubPhonemes = 0.01;
-let defaultVoiceness = 0.8;
+let defaultVoiceness = 0.9;
 let defaultVoiceless = 0.2;
 const generateKeyframes = (
   pronunciation,
@@ -1127,6 +1128,7 @@ const generateKeyframes = (
       if (type == "consonant") {
         voiceness = voiced ? _defaultVoiceness : _defaultVoiceless;
       }
+      //console.log({ voiceness });
       Object.assign(keyframe, deconstructVoiceness(voiceness));
 
       for (const key in constriction) {
@@ -1147,9 +1149,9 @@ const generateKeyframes = (
       holdKeyframe.name = `${holdKeyframe.name}]`;
       _keyframes.push(holdKeyframe);
 
-      if (index == 0 && type == "consonant" && !voiced) {
+      if (false && index == 0 && type == "consonant" && !voiced) {
         // add keyframe after first to change to voiced
-        Object.assign(_keyframes[0], deconstructVoiceness(defaultVoiceness));
+        Object.assign(_keyframes[0], deconstructVoiceness(_defaultVoiceness));
         _keyframes[0].intensity = 0;
         const voicedToVoicelessKeyframe = Object.assign({}, _keyframes[0]);
         voicedToVoicelessKeyframe.name = `{${voicedToVoicelessKeyframe.name}`;
@@ -1158,7 +1160,7 @@ const generateKeyframes = (
         voicedToVoicelessKeyframe.intensity = 0.8;
         Object.assign(
           voicedToVoicelessKeyframe,
-          deconstructVoiceness(defaultVoiceless)
+          deconstructVoiceness(_defaultVoiceless)
         );
         _keyframes.splice(1, 0, voicedToVoicelessKeyframe);
 
@@ -1174,7 +1176,7 @@ const generateKeyframes = (
         //voicelessToVoicedKeyframe.intensity = 0;
         Object.assign(
           voicelessToVoicedKeyframe,
-          deconstructVoiceness(defaultVoiceness)
+          deconstructVoiceness(_defaultVoiceness)
         );
         _keyframes.push(voicelessToVoicedKeyframe);
       }
@@ -1185,6 +1187,7 @@ const generateKeyframes = (
 };
 
 const RenderKeyframes = (keyframes, time = 0, frequency = 140, speed = 1) => {
+  frequency = frequency ?? 140;
   const _keyframes = [];
   keyframes.forEach((keyframe) => {
     const _keyframe = Object.assign({}, keyframe);

@@ -1,5 +1,5 @@
 const { send } = setupConnection("tts", (message) => {
-  const {
+  let {
     text,
     phonemes,
     frequency,
@@ -10,6 +10,8 @@ const { send } = setupConnection("tts", (message) => {
     isWhispering,
     speed,
     playTts,
+    isRelative,
+    relativeValueKey,
   } = message;
   if (isWhispering != undefined) {
     setIsWhispering(isWhispering);
@@ -17,6 +19,39 @@ const { send } = setupConnection("tts", (message) => {
   if (speed != undefined) {
     setSpeed(speed);
   }
+  if (frequency != undefined) {
+    const relativeValues = relativeFrequencyValues;
+    const valueNumber = frequency;
+    if (isRelative) {
+      const relativeValueObject = relativeValues.find(
+        ({ key }) => key == relativeValueKey
+      );
+      if (relativeValueObject) {
+        relativeValueObject.value = valueNumber;
+        if (relativeValueObject.value == 0) {
+          relativeValues.splice(relativeValues.indexOf(relativeValueObject), 1);
+        }
+      } else if (valueNumber != 0) {
+        relativeValues.push({
+          value: valueNumber,
+          key: relativeValueKey,
+        });
+      }
+    } else {
+      baseFrequency = frequency;
+    }
+    let relativeFrequency = 0;
+    if (true) {
+      relativeFrequency = relativeFrequencyValues.at(-1)?.value ?? 0;
+    } else {
+      relativeFrequencyValues.forEach(({ value }) => {
+        relativeFrequency += value;
+      });
+    }
+
+    frequency = baseFrequency * 2 ** (relativeFrequency / 12);
+  }
+
   if (text) {
     textInput.value = text;
     textInput.dispatchEvent(new Event("input"));
@@ -29,6 +64,10 @@ const { send } = setupConnection("tts", (message) => {
     play(time, frequency, tractLength, holdLastKeyframe, lastKeyframe);
   }
 });
+
+/** @type {{key: string, value: number}[]} */
+const relativeFrequencyValues = [];
+let baseFrequency = 140;
 
 let speed = 1;
 const speedInput = document.getElementById("speed");

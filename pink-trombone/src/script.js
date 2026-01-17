@@ -4,8 +4,14 @@ autoResumeAudioContext(audioContext);
 const pinkTromboneElement = document.querySelector("pink-trombone");
 let frontConstriction, backConstriction;
 
+let frequencyNode;
 pinkTromboneElement.addEventListener("load", (event) => {
   pinkTromboneElement.setAudioContext(audioContext).then((pinkTrombone) => {
+    frequencyNode = pinkTromboneElement.frequency;
+    frequencyNode.isFrequency = true;
+    frequencyNode.relativeValues = frequencyNode.relativeValues ?? [];
+    frequencyNode._value = frequencyNode._value ?? frequencyNode.value;
+
     pinkTromboneElement.enableUI();
     pinkTromboneElement.startUI();
     const { audioContext } = pinkTromboneElement;
@@ -163,9 +169,11 @@ const updateConstriction = throttle(() => {
   send(message);
 }, 100);
 
-let _voiceness = 0.9;
+let _voiceness = 0.8;
 function setVoiceness(voiceness, offset) {
   _voiceness = voiceness;
+
+  //console.log("setVoiceness", { voiceness });
 
   const tenseness = 1 - Math.cos(voiceness * Math.PI * 0.5);
   const loudness = Math.pow(tenseness, 0.25);
@@ -194,7 +202,7 @@ let latestPlayKeyframesTimestamp = 0;
 const { send } = setupConnection("pink-trombone", (message) => {
   let didSetVoiceness = false;
   let canSetVoiceness = true;
-  // console.log("message", message);
+  //console.log("message", message);
   if (message.lastKeyframe) {
     clearPendingNodes();
   }
@@ -270,7 +278,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
       case "phoneme":
         const { constrictions, voiced, type } = phonemes[message.phoneme];
         if (constrictions) {
-          let voiceness = 0.9;
+          let voiceness = 0.8;
           if (type == "consonant") {
             voiceness = voiced ? 0.9 : 0.0;
           }
@@ -371,10 +379,27 @@ const { send } = setupConnection("pink-trombone", (message) => {
             keyframes.pop();
           }
           if (message.frequency) {
-            const baseFrequency = keyframes[0].frequency;
+            const relativeValues = frequencyNode.relativeValues ?? [];
+
+            const { frequency } = message;
+            if (!message.isRelative) {
+              frequencyNode._value = frequency ?? frequencyNode._value;
+            }
+
+            let relativeValue = 0;
+            if (true) {
+              relativeValue = relativeValues.at(-1)?.value ?? 0;
+            } else {
+              relativeValues.forEach(({ value }) => {
+                relativeValue += value;
+              });
+            }
+            const _frequency = frequency * 2 ** (relativeValue / 12);
+
+            const rootFrequency = keyframes[0].frequency;
             keyframes.forEach((keyframe) => {
-              const frequencyRatio = keyframe.frequency / baseFrequency;
-              keyframe.frequency = frequencyRatio * message.frequency;
+              const frequencyRatio = keyframe.frequency / rootFrequency;
+              keyframe.frequency = frequencyRatio * _frequency;
             });
           }
           playKeyframes(keyframes, message.lastKeyframe ? -1 : 0);
@@ -390,14 +415,48 @@ const { send } = setupConnection("pink-trombone", (message) => {
     }
     if (nodes.length > 0) {
       nodes.forEach((node) => {
+        node.relativeValues = node.relativeValues ?? [];
         if (message.isRelative) {
-          if (node._value == undefined) {
-            node._value = node.value;
+          const relativeValueObject = node.relativeValues.find(
+            ({ key }) => key == message.relativeValueKey
+          );
+          if (relativeValueObject) {
+            relativeValueObject.value = valueNumber;
+            if (relativeValueObject.value == 0) {
+              node.relativeValues.splice(
+                node.relativeValues.indexOf(relativeValueObject),
+                1
+              );
+            }
+          } else if (valueNumber != 0) {
+            node.relativeValues.push({
+              value: valueNumber,
+              key: message.relativeValueKey,
+            });
           }
-          valueNumber = node._value + valueNumber;
-        } else {
-          node._value = node.value;
         }
+        node._value = node._value ?? node.value;
+
+        if (!message.isRelative) {
+          node._value = valueNumber ?? node._value;
+        }
+
+        let relativeValue = 0;
+        if (true) {
+          relativeValue = node.relativeValues.at(-1)?.value ?? 0;
+        } else {
+          node.relativeValues.forEach(({ value }) => {
+            relativeValue += value;
+          });
+        }
+
+        if (node.isFrequency) {
+          valueNumber = node._value * 2 ** (relativeValue / 12);
+          //console.log("frequency", valueNumber);
+        } else {
+          valueNumber = node._value + relativeValue;
+        }
+
         valueNumber = clamp(valueNumber, node.minValue, node.maxValue);
         exponentialRampToValueAtTime(node, valueNumber, 0.01);
       });
@@ -428,7 +487,7 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
   if (value == 0) {
     value = 0.0001;
   }
-  //node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
+  node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
   node.exponentialRampToValueAtTime(
     value,
     pinkTromboneElement.audioContext.currentTime + offset
@@ -635,4 +694,12 @@ debugMicrophoneButton.addEventListener("click", () => {
       debugMicrophoneButton.innerText = "listen to microphone";
     }
   }
+});
+
+let allNodes;
+document.addEventListener("mouseup", () => {
+  allNodes = allNodes ?? [pinkTromboneElement.frequency]; // FILL - add more when needed
+  allNodes.forEach((node) => {
+    node._value = undefined;
+  });
 });
