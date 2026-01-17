@@ -1078,11 +1078,11 @@ let spaceTime = 0;
 let releaseTime = 0.1;
 let timeBetweenPhonemes = 0.1;
 let timeBetweenSubPhonemes = 0.01;
-let defaultVoiceness = 0.8;
+let defaultVoiceness = 0.9;
 let defaultVoiceless = 0.2;
 const generateKeyframes = (
   pronunciation,
-  _defaultVoiceness = 0.8,
+  _defaultVoiceness = 0.9,
   _defaultVoiceless = 0.2
 ) => {
   _defaultVoiceness = _defaultVoiceness ?? defaultVoiceness;
