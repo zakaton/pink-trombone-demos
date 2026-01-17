@@ -1110,3 +1110,84 @@ document.addEventListener("paste", async (event) => {
     console.error("Invalid JSON file");
   }
 });
+
+// demo
+const gamepadMidiMapping = {
+  x: 60,
+  o: 65,
+  "□": 70,
+  "△": 75,
+  pad: 80,
+};
+/** @param {number} midi */
+const midiToGamepadControl = (midi) => {
+  const closestMidiMap = Object.entries(gamepadMidiMapping).find(
+    ([key, _midi]) => {
+      return Math.abs(midi - _midi) <= 2;
+    }
+  );
+  if (closestMidiMap) {
+    let gamepadControl = closestMidiMap[0];
+    const midiOffset = midi - closestMidiMap[1];
+    switch (midiOffset) {
+      case -2:
+        gamepadControl += "↓";
+        break;
+      case -1:
+        gamepadControl += "←";
+        break;
+      case 0:
+        break;
+      case 1:
+        gamepadControl += "→";
+        break;
+      case 2:
+        gamepadControl += "↑";
+        break;
+    }
+    return gamepadControl;
+  } else {
+    console.warn("uncaight midi", midi);
+    return "?";
+  }
+};
+/** @param {string[]} notes */
+const notesToControls = (notes) => {
+  return notes.map((note) => {
+    const frequency =
+      typeof note == "string" ? Tone.Frequency(note) : Tone.Midi(note);
+    const midi = frequency.toMidi();
+    return midiToGamepadControl(midi);
+  });
+};
+window.notesToControls = notesToControls;
+
+const notes = [
+  "F4",
+  "A4",
+  "B4",
+
+  "F4",
+  "A4",
+  "B4",
+
+  "F4",
+  "A4",
+  "B4",
+
+  "E5",
+  "D5",
+
+  "B4",
+  "C5",
+  "B4",
+
+  "G4",
+  "E4",
+
+  "D4",
+  "E4",
+  "G4",
+  "E4",
+];
+console.log(notesToControls(notes));
