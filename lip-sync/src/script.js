@@ -47,7 +47,7 @@ const { send } = setupConnection("lip-sync", (message) => {
   }
 });
 
-const interpolateTowardsMorphTargets = (morphTargets, interpolation = 0.9) => {
+const interpolateTowardsMorphTargets = (morphTargets, interpolation = 1) => {
   for (const name in morphTargetDictionary) {
     const key = morphTargetDictionary[name];
     morphTargetInfluences[key] = lerp(
@@ -85,6 +85,10 @@ let isAnimationRunning = false;
 let startTime;
 const playKeyframes = (_keyframes, holdLastKeyframe, lastKeyframe) => {
   //console.log(_keyframes);
+  if (lastKeyframe || holdLastKeyframe) {
+    keyframes.length = 0;
+    startTime = undefined;
+  }
   if (keyframes.length > 0) {
     const offsetTime = keyframes[keyframes.length - 1].time;
     _keyframes.forEach((keyframe) => {

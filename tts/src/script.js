@@ -24,7 +24,7 @@ const { send } = setupConnection("tts", (message) => {
     const valueNumber = frequency;
     if (isRelative) {
       const relativeValueObject = relativeValues.find(
-        ({ key }) => key == message.relativeValueKey
+        ({ key }) => key == relativeValueKey
       );
       if (relativeValueObject) {
         relativeValueObject.value = valueNumber;
@@ -34,7 +34,7 @@ const { send } = setupConnection("tts", (message) => {
       } else if (valueNumber != 0) {
         relativeValues.push({
           value: valueNumber,
-          key: message.relativeValueKey,
+          key: relativeValueKey,
         });
       }
     } else {

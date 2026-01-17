@@ -9,6 +9,8 @@ pinkTromboneElement.addEventListener("load", (event) => {
   pinkTromboneElement.setAudioContext(audioContext).then((pinkTrombone) => {
     frequencyNode = pinkTromboneElement.frequency;
     frequencyNode.isFrequency = true;
+    frequencyNode.relativeValues = frequencyNode.relativeValues ?? [];
+    frequencyNode._value = frequencyNode._value ?? frequencyNode.value;
 
     pinkTromboneElement.enableUI();
     pinkTromboneElement.startUI();
@@ -170,6 +172,8 @@ const updateConstriction = throttle(() => {
 let _voiceness = 0.8;
 function setVoiceness(voiceness, offset) {
   _voiceness = voiceness;
+
+  //console.log("setVoiceness", { voiceness });
 
   const tenseness = 1 - Math.cos(voiceness * Math.PI * 0.5);
   const loudness = Math.pow(tenseness, 0.25);
@@ -375,10 +379,27 @@ const { send } = setupConnection("pink-trombone", (message) => {
             keyframes.pop();
           }
           if (message.frequency) {
-            const baseFrequency = keyframes[0].frequency;
+            const relativeValues = frequencyNode.relativeValues ?? [];
+
+            const { frequency } = message;
+            if (!message.isRelative) {
+              frequencyNode._value = frequency ?? frequencyNode._value;
+            }
+
+            let relativeValue = 0;
+            if (true) {
+              relativeValue = relativeValues.at(-1)?.value ?? 0;
+            } else {
+              relativeValues.forEach(({ value }) => {
+                relativeValue += value;
+              });
+            }
+            const _frequency = frequency * 2 ** (relativeValue / 12);
+
+            const rootFrequency = keyframes[0].frequency;
             keyframes.forEach((keyframe) => {
-              const frequencyRatio = keyframe.frequency / baseFrequency;
-              keyframe.frequency = frequencyRatio * message.frequency;
+              const frequencyRatio = keyframe.frequency / rootFrequency;
+              keyframe.frequency = frequencyRatio * _frequency;
             });
           }
           playKeyframes(keyframes, message.lastKeyframe ? -1 : 0);

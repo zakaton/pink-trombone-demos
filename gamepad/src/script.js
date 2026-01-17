@@ -592,7 +592,12 @@ const updateDeleteAllMapsButton = () => {
 /** @type {GamepadMap[]} */
 const triggeredMaps = [];
 
-let latestFrequency;
+let latestFrequency = true ? undefined : 400;
+
+/** @type {Record<string, {key: string, value: number}[]>} */
+const allRelativeValues = {};
+/** @type {Record<string, number>} */
+const baseValues = {};
 
 const addMapButton = document.getElementById("addMap");
 /** @param {GamepadMap} map */
@@ -860,6 +865,47 @@ const addMap = (map) => {
     const { isRelative } = map;
     const relativeValueKey = `${map.index}.${map.inputType}`;
 
+    allRelativeValues[relativeValueKey] =
+      allRelativeValues[relativeValueKey] ?? [];
+    const relativeValues = allRelativeValues[relativeValueKey];
+
+    if (isRelative) {
+      const relativeValueObject = relativeValues.find(
+        ({ key }) => key == relativeValueKey
+      );
+      if (relativeValueObject) {
+        relativeValueObject.value = outputValue;
+        if (relativeValueObject.value == 0) {
+          relativeValues.splice(relativeValues.indexOf(relativeValueObject), 1);
+        }
+      } else if (outputValue != 0) {
+        relativeValues.push({
+          value: outputValue,
+          key: relativeValueKey,
+        });
+      }
+    } else {
+      baseValues[map.type] = outputValue;
+    }
+
+    let relativeValue = 0;
+    if (true) {
+      relativeValue = relativeValues.at(-1)?.value ?? 0;
+    } else {
+      relativeValues.forEach(({ value }) => {
+        relativeValue += value;
+      });
+    }
+
+    let _outputValue = 0;
+    const baseValue = baseValues[map.type];
+    if (map.type == "frequency") {
+      _outputValue = outputValue * 2 ** (relativeValue / 12);
+      //console.log({ _outputValue });
+    } else {
+      _outputValue = baseValue + relativeValue;
+    }
+
     if (isTrigger) {
       const message = {};
       const didIsTriggeredChange = isTriggered != latestIsTriggered;
@@ -870,13 +916,14 @@ const addMap = (map) => {
           Object.assign(message, {
             intensity: 0.5,
             holdLastKeyframe: true,
-            frequency: latestFrequency,
           });
         } else {
           Object.assign(message, {
             lastKeyframe: true,
-            frequency: latestFrequency,
           });
+        }
+        if (latestFrequency != undefined) {
+          message.frequency = latestFrequency;
         }
         // console.log({ latestFrequency });
         let shouldSendMessage = true;
@@ -884,7 +931,6 @@ const addMap = (map) => {
         switch (map.type) {
           case "phoneme":
             if (isTriggered) {
-              // console.log({ latestFrequency });
               Object.assign(message, {
                 utterance: {
                   name: map.phoneme,
