@@ -592,7 +592,7 @@ const updateDeleteAllMapsButton = () => {
 /** @type {GamepadMap[]} */
 const triggeredMaps = [];
 
-let latestFrequency = true ? undefined : 400;
+let latestFrequency = false ? undefined : 100;
 
 /** @type {Record<string, {key: string, value: number}[]>} */
 const allRelativeValues = {};

@@ -57,7 +57,9 @@ const constrictions = {
     index: 10.5,
   },
   hasAllConstrictions() {
-    return Boolean(this.tongue && this.backConstriction && this.frontConstriction);
+    return Boolean(
+      this.tongue && this.backConstriction && this.frontConstriction
+    );
   },
 };
 let voiceness = 0.7;
@@ -275,7 +277,9 @@ const updateMicrophoneSelect = async () => {
     microphoneSelect.removeAttribute("hidden");
     microphoneOptGroup.innerHTML = "";
     microphones.forEach((microphone) => {
-      microphoneOptGroup.appendChild(new Option(microphone.label, microphone.deviceId));
+      microphoneOptGroup.appendChild(
+        new Option(microphone.label, microphone.deviceId)
+      );
     });
     didCheckMicrophonesOnce = true;
   } else {
@@ -332,7 +336,12 @@ function setUrlParam(key, value) {
       searchParams.delete(key);
     }
     let newUrl =
-      window.location.protocol + "//" + window.location.host + window.location.pathname + "?" + searchParams.toString();
+      window.location.protocol +
+      "//" +
+      window.location.host +
+      window.location.pathname +
+      "?" +
+      searchParams.toString();
     window.history.pushState({ path: newUrl }, "", newUrl);
   }
 }
@@ -446,7 +455,9 @@ async function getProjects() {
     x.open("GET", `${studioEndpoint}/v1/api/projects`);
     x.onload = () => {
       if (x.status !== 200) {
-        reject("No projects found: " + x.status + " - " + JSON.stringify(x.response));
+        reject(
+          "No projects found: " + x.status + " - " + JSON.stringify(x.response)
+        );
       } else {
         if (!x.response.success) {
           reject(x.response.error);
@@ -454,7 +465,9 @@ async function getProjects() {
           const projects = x.response.projects;
           console.log("projects", projects);
           resolve(projects);
-          window.dispatchEvent(new CustomEvent("edgeImpulseProjects", { detail: { projects } }));
+          window.dispatchEvent(
+            new CustomEvent("edgeImpulseProjects", { detail: { projects } })
+          );
         }
       }
     };
@@ -471,7 +484,9 @@ async function getProject() {
     x.open("GET", `${studioEndpoint}/v1/api/${projectId}/public-info`);
     x.onload = () => {
       if (x.status !== 200) {
-        reject("No projects found: " + x.status + " - " + JSON.stringify(x.response));
+        reject(
+          "No projects found: " + x.status + " - " + JSON.stringify(x.response)
+        );
       } else {
         if (!x.response.success) {
           reject(x.response.error);
@@ -479,7 +494,9 @@ async function getProject() {
           const project = x.response;
           console.log("project", project);
           resolve(project);
-          window.dispatchEvent(new CustomEvent("edgeImpulseProject", { detail: { project } }));
+          window.dispatchEvent(
+            new CustomEvent("edgeImpulseProject", { detail: { project } })
+          );
         }
       }
     };
@@ -498,7 +515,12 @@ async function getHmacKey() {
     x.open("GET", `${studioEndpoint}/v1/api/${projectId}/devkeys`);
     x.onload = () => {
       if (x.status !== 200) {
-        reject("No development keys found: " + x.status + " - " + JSON.stringify(x.response));
+        reject(
+          "No development keys found: " +
+            x.status +
+            " - " +
+            JSON.stringify(x.response)
+        );
       } else {
         if (!x.response.success) {
           reject(x.response.error);
@@ -544,9 +566,15 @@ toggleSamplingButton.addEventListener("click", () => {
 });
 
 function updateToggleSamplingButton() {
-  const enabled = isRemoteManagementConnected() && label.length > 0 && !isSampling && mediaStream;
+  const enabled =
+    isRemoteManagementConnected() &&
+    label.length > 0 &&
+    !isSampling &&
+    mediaStream;
   toggleSamplingButton.disabled = !enabled;
-  toggleSamplingButton.innerText = isSampling ? "sampling..." : "start sampling";
+  toggleSamplingButton.innerText = isSampling
+    ? "sampling..."
+    : "start sampling";
 }
 
 window.addEventListener("load", () => {
@@ -600,7 +628,10 @@ async function collectSamples(numberOfSamples) {
       console.log({ sampleCount });
       if (sampleCount >= numberOfSamples) {
         const overflow = sampleCount - numberOfSamples;
-        audioData[audioData.length - 1] = inputBuffer.slice(0, inputBuffer.length - overflow);
+        audioData[audioData.length - 1] = inputBuffer.slice(
+          0,
+          inputBuffer.length - overflow
+        );
         mediaStreamScriptProcessor.disconnect();
         gainNode.disconnect(mediaStreamScriptProcessor);
         //resolve(createWavBlob(audioData, audioContext.sampleRate));
@@ -638,7 +669,10 @@ async function getWav(numberOfSamples) {
  * @returns {Blob} - A Blob containing the WAV file.
  */
 function createWavBlob(audioData, sampleRate) {
-  const totalSamples = audioData.reduce((sum, buffer) => sum + buffer.length, 0);
+  const totalSamples = audioData.reduce(
+    (sum, buffer) => sum + buffer.length,
+    0
+  );
   const wavBuffer = new ArrayBuffer(44 + totalSamples * 2);
   const view = new DataView(wavBuffer);
 
@@ -668,7 +702,11 @@ function createWavBlob(audioData, sampleRate) {
   audioData.forEach((buffer) => {
     for (let i = 0; i < buffer.length; i++) {
       const sample = Math.max(-1, Math.min(1, buffer[i])); // Clamp to [-1, 1]
-      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      view.setInt16(
+        offset,
+        sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+        true
+      );
       offset += 2;
     }
   });
@@ -730,8 +768,12 @@ let label;
 /** @type {HTMLSelectElement} */
 const labelInput = document.getElementById("label");
 const vowelLabelsOptgroup = document.getElementById("vowelLabels");
-const voicedConsonantLabelsOptgroup = document.getElementById("voicedConsonantLabels");
-const voicelessConsonantLabelsOptgroup = document.getElementById("voicelessConsonantLabels");
+const voicedConsonantLabelsOptgroup = document.getElementById(
+  "voicedConsonantLabels"
+);
+const voicelessConsonantLabelsOptgroup = document.getElementById(
+  "voicelessConsonantLabels"
+);
 Object.entries(phonemes).forEach(([phoneme, value]) => {
   const option = new Option(`${phoneme} (${value.example})`, phoneme);
   if (value.type == "vowel") {
@@ -938,11 +980,16 @@ function remoteManagementHelloMessage() {
 }
 
 function isRemoteManagementConnected() {
-  return remoteManagementWebSocket?.readyState == WebSocket.OPEN && remoteManagementWebSocket?._isConnected;
+  return (
+    remoteManagementWebSocket?.readyState == WebSocket.OPEN &&
+    remoteManagementWebSocket?._isConnected
+  );
 }
 
 /** @type {HTMLButtonElement} */
-const toggleRemoteManagementConnectionButton = document.getElementById("toggleRemoteManagementConnection");
+const toggleRemoteManagementConnectionButton = document.getElementById(
+  "toggleRemoteManagementConnection"
+);
 toggleRemoteManagementConnectionButton.addEventListener("click", () => {
   if (isRemoteManagementConnected()) {
     remoteManagementWebSocket.dontReconnect = true;
@@ -978,13 +1025,20 @@ let reconnectRemoteManagementOnDisconnection = false;
 const reconnectRemoteManagementOnDisconnectionInput = document.getElementById(
   "reconnectRemoteManagementOnDisconnection"
 );
-reconnectRemoteManagementOnDisconnectionInput.addEventListener("input", (event) => {
-  setReconnectRemoteManagementOnDisconnection(event.target.checked);
-});
-reconnectRemoteManagementOnDisconnectionInput.checked = reconnectRemoteManagementOnDisconnection;
+reconnectRemoteManagementOnDisconnectionInput.addEventListener(
+  "input",
+  (event) => {
+    setReconnectRemoteManagementOnDisconnection(event.target.checked);
+  }
+);
+reconnectRemoteManagementOnDisconnectionInput.checked =
+  reconnectRemoteManagementOnDisconnection;
 /** @param {boolean} newReconnectRemoteManagementOnDisconnection */
-function setReconnectRemoteManagementOnDisconnection(newReconnectRemoteManagementOnDisconnection) {
-  reconnectRemoteManagementOnDisconnection = newReconnectRemoteManagementOnDisconnection;
+function setReconnectRemoteManagementOnDisconnection(
+  newReconnectRemoteManagementOnDisconnection
+) {
+  reconnectRemoteManagementOnDisconnection =
+    newReconnectRemoteManagementOnDisconnection;
   console.log({ reconnectRemoteManagementOnDisconnection });
   dispatchEvent(new Event("reconnectRemoteManagementOnDisconnection"));
 }
@@ -1031,7 +1085,11 @@ async function uploadData(values) {
   console.log("Signature generated", data.signature);
 
   const formData = new FormData();
-  formData.append("message", new Blob([JSON.stringify(data)], { type: "application/json" }), "message.json");
+  formData.append(
+    "message",
+    new Blob([JSON.stringify(data)], { type: "application/json" }),
+    "message.json"
+  );
 
   console.log("Form data prepared", formData);
 
@@ -1043,7 +1101,9 @@ async function uploadData(values) {
         resolve(xml.responseText);
       } else {
         console.error("Upload failed", xml.status, xml.responseText);
-        reject(`Failed to upload (status code ${xml.status}): ${xml.responseText}`);
+        reject(
+          `Failed to upload (status code ${xml.status}): ${xml.responseText}`
+        );
       }
     };
     xml.onerror = () => {
@@ -1090,10 +1150,16 @@ async function createSignature(hmacKey, data) {
     ["sign", "verify"] // what this key can do
   );
   // Create signature for encoded input data
-  const signature = await crypto.subtle.sign("HMAC", key, textEncoder.encode(JSON.stringify(data)));
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    textEncoder.encode(JSON.stringify(data))
+  );
   // Convert back to Hex
   const b = new Uint8Array(signature);
-  return Array.prototype.map.call(b, (x) => ("00" + x.toString(16)).slice(-2)).join("");
+  return Array.prototype.map
+    .call(b, (x) => ("00" + x.toString(16)).slice(-2))
+    .join("");
 }
 
 const emptySignature = Array(64).fill("0").join("");
@@ -1219,7 +1285,8 @@ function convertFloat32ToPCM(float32Array) {
   for (let i = 0; i < float32Array.length; i++) {
     const clampedValue = Math.max(-1, Math.min(1, float32Array[i]));
 
-    pcmArray[i] = clampedValue < 0 ? clampedValue * 0x8000 : clampedValue * 0x7fff;
+    pcmArray[i] =
+      clampedValue < 0 ? clampedValue * 0x8000 : clampedValue * 0x7fff;
   }
 
   return pcmArray;
@@ -1227,7 +1294,9 @@ function convertFloat32ToPCM(float32Array) {
 async function classify() {
   await setSampleRate(classifierProperties.frequency);
   setIsClassifying(true);
-  const audioData = await collectSamples(classifierProperties.frame_sample_count);
+  const audioData = await collectSamples(
+    classifierProperties.frame_sample_count
+  );
   const audioValues = convertFloat32ToPCM(combineFloat32Arrays(audioData));
   console.log(audioValues);
   classifierResults = classifier.classify(audioValues, false);
@@ -1239,9 +1308,15 @@ async function classify() {
   const value = classifierResults.results[0].value;
   console.log({ phoneme, value });
   if (volume > volumeThreshold && value > classifierThreshold) {
-    const string = phonemes[phoneme] ? `${phoneme} (${phonemes[phoneme].example})` : phoneme;
+    const string = phonemes[phoneme]
+      ? `${phoneme} (${phonemes[phoneme].example})`
+      : phoneme;
     topClassification.innerText = string;
-    classifierResultsPre.textContent = JSON.stringify(classifierResults, null, 2);
+    classifierResultsPre.textContent = JSON.stringify(
+      classifierResults,
+      null,
+      2
+    );
     throttledSendToGame();
     if (phoneme == "silence") {
       throttledSendToPinkTrombone({ intensity: 0 });
