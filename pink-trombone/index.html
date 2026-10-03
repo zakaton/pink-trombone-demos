@@ -1,10 +1,16 @@
 <html>
   <head>
     <title>Pink Trombone</title>
-    <script src="../src/utils.js"></script>
-    <base href="/pink-trombone-demos/" />
+    <script>
+      if (location.hostname.endsWith("github.io")) {
+        const baseTag = document.createElement("base");
+        baseTag.href = "/pink-trombone-demos/";
+        document.head.appendChild(baseTag);
+      }
+    </script>
+    <script src="/src/utils.js"></script>
     <script
-      src="../pink-trombone/src/pink-trombone.min.js"
+      src="/pink-trombone/src/pink-trombone.min.js"
       type="module"
     ></script>
   </head>
@@ -20,6 +26,6 @@
     </div>
 
     <pink-trombone></pink-trombone>
-    <script src="../pink-trombone/src/script.js"></script>
+    <script src="/pink-trombone/src/script.js"></script>
   </body>
 </html>
