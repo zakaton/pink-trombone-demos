@@ -96,7 +96,7 @@ if (typeof TextToIPA !== "object") {
           }
           TextToIPA._IPADict[word].push(pronunciation);
           TextToIPA._SyllableDict[word] = TextToIPA._IPADict[word].map(
-            (pronunciation) => splitPhonemesIntoSyllables(pronunciation)
+            (pronunciation) => splitPhonemesIntoSyllables(pronunciation),
           );
 
           pronunciation = pronunciation.replace("ˈ", ""); // remove ˈ
@@ -154,7 +154,7 @@ if (typeof TextToIPA !== "object") {
     TextToIPA.lookup = function (word) {
       if (Object.keys(TextToIPA._IPADict).length === 0) {
         console.log(
-          'TextToIPA Error: No data in TextToIPA._IPADict. Did "TextToIPA.loadDict()" run?'
+          'TextToIPA Error: No data in TextToIPA._IPADict. Did "TextToIPA.loadDict()" run?',
         );
         return new IPAWord("undefined", word, ipas);
       } else {
@@ -203,7 +203,7 @@ if (typeof TextToIPA !== "object") {
 // Load dict
 // Could be intensive, might only want to load when necessary. Therefore it is commented out.
 // Feel free to re-enable if you want to just load the dictionary here, instead of somewhere else
-window.onload = TextToIPA.loadDict("/src/english.txt");
+window.onload = TextToIPA.loadDict("./src/english.txt");
 
 const trimPronunciation = (pronunciation) => {
   nonPhonemeIPAs.forEach((nonPhonemeIPA) => {
