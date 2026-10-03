@@ -1,135 +1,167 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>Batch Generator</title>
-    <script src="/src/utils.js"></script>
-    <script src="/src/text-to-ipa.js"></script>
-    <script src="/pink-trombone/src/pink-trombone.min.js" type="module"></script>
+    <script src="../src/utils.js"></script>
+    <script src="../src/text-to-ipa.js"></script>
+    <script
+      src="../pink-trombone/src/pink-trombone.min.js"
+      type="module"
+    ></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #1a1a2e;
-            color: #eee;
-        }
-        h1 { color: #00d4ff; }
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background: #00d4ff;
-            color: #1a1a2e;
-        }
-        button:hover { background: #00a8cc; }
-        button:disabled { background: #666; cursor: not-allowed; }
-        select, input {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background: #2a2a4e;
-            color: #eee;
-        }
-        .progress {
-            background: #2a2a4e;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .progress-bar {
-            height: 30px;
-            background: #333;
-            border-radius: 5px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00d4ff, #00ff88);
-            transition: width 0.3s;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-        }
-        .stat {
-            background: #333;
-            padding: 10px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .stat-value { font-size: 24px; color: #00d4ff; }
-        .log {
-            background: #111;
-            padding: 15px;
-            border-radius: 5px;
-            height: 200px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 12px;
-        }
-        .log-entry { margin: 2px 0; }
-        .log-error { color: #ff6b6b; }
-        .log-success { color: #00ff88; }
-        pink-trombone {
-            position: fixed;
-            top: -1000px;
-            left: -1000px;
-            width: 300px;
-            height: 300px;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #1a1a2e;
+        color: #eee;
+      }
+      h1 {
+        color: #00d4ff;
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+        background: #00d4ff;
+        color: #1a1a2e;
+      }
+      button:hover {
+        background: #00a8cc;
+      }
+      button:disabled {
+        background: #666;
+        cursor: not-allowed;
+      }
+      select,
+      input {
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 5px;
+        border: 1px solid #444;
+        background: #2a2a4e;
+        color: #eee;
+      }
+      .progress {
+        background: #2a2a4e;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      .progress-bar {
+        height: 30px;
+        background: #333;
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 10px 0;
+      }
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00d4ff, #00ff88);
+        transition: width 0.3s;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+      }
+      .stat {
+        background: #333;
+        padding: 10px;
+        border-radius: 5px;
+        text-align: center;
+      }
+      .stat-value {
+        font-size: 24px;
+        color: #00d4ff;
+      }
+      .log {
+        background: #111;
+        padding: 15px;
+        border-radius: 5px;
+        height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .log-entry {
+        margin: 2px 0;
+      }
+      .log-error {
+        color: #ff6b6b;
+      }
+      .log-success {
+        color: #00ff88;
+      }
+      pink-trombone {
+        position: fixed;
+        top: -1000px;
+        left: -1000px;
+        width: 300px;
+        height: 300px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Pink Trombone Batch Generator</h1>
 
     <div class="controls">
-        <select id="voice">
-            <option value="male">Male (140Hz, 44 segments)</option>
-            <option value="female">Female (220Hz, 38 segments)</option>
-            <option value="both">Both Voices</option>
-        </select>
-        <input type="number" id="startIndex" placeholder="Start index" value="0" min="0">
-        <input type="number" id="batchSize" placeholder="Batch size" value="100" min="1">
-        <button id="startBtn" onclick="startBatch()">Start Batch</button>
-        <button id="stopBtn" onclick="stopBatch()" disabled>Stop</button>
-        <button onclick="downloadResults()">Download Results</button>
+      <select id="voice">
+        <option value="male">Male (140Hz, 44 segments)</option>
+        <option value="female">Female (220Hz, 38 segments)</option>
+        <option value="both">Both Voices</option>
+      </select>
+      <input
+        type="number"
+        id="startIndex"
+        placeholder="Start index"
+        value="0"
+        min="0"
+      />
+      <input
+        type="number"
+        id="batchSize"
+        placeholder="Batch size"
+        value="100"
+        min="1"
+      />
+      <button id="startBtn" onclick="startBatch()">Start Batch</button>
+      <button id="stopBtn" onclick="stopBatch()" disabled>Stop</button>
+      <button onclick="downloadResults()">Download Results</button>
     </div>
 
     <div class="progress">
-        <div>Progress: <span id="progressText">0 / 0</span></div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      <div>Progress: <span id="progressText">0 / 0</span></div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="processedCount">0</div>
+          <div>Processed</div>
         </div>
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-value" id="processedCount">0</div>
-                <div>Processed</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="errorCount">0</div>
-                <div>Errors</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="speedStat">0</div>
-                <div>Words/min</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="etaStat">--</div>
-                <div>ETA</div>
-            </div>
+        <div class="stat">
+          <div class="stat-value" id="errorCount">0</div>
+          <div>Errors</div>
         </div>
+        <div class="stat">
+          <div class="stat-value" id="speedStat">0</div>
+          <div>Words/min</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="etaStat">--</div>
+          <div>ETA</div>
+        </div>
+      </div>
     </div>
 
     <div class="log" id="log"></div>
@@ -137,299 +169,334 @@
     <pink-trombone id="pinkTrombone"></pink-trombone>
 
     <script type="module">
-        import { phonemes, releaseTime, constructKeyframes } from '/src/utils.js';
+      import {
+        phonemes,
+        releaseTime,
+        constructKeyframes,
+      } from "../src/utils.js";
 
-        const voiceConfigs = {
-            male: { frequency: 140, tractLength: 44, label: 'male' },
-            female: { frequency: 220, tractLength: 38, label: 'female' }
-        };
+      const voiceConfigs = {
+        male: { frequency: 140, tractLength: 44, label: "male" },
+        female: { frequency: 220, tractLength: 38, label: "female" },
+      };
 
-        let words = [];
-        let results = { male: [], female: [] };
-        let isRunning = false;
-        let processed = 0;
-        let errors = 0;
-        let startTime = null;
+      let words = [];
+      let results = { male: [], female: [] };
+      let isRunning = false;
+      let processed = 0;
+      let errors = 0;
+      let startTime = null;
 
-        const pinkTrombone = document.getElementById('pinkTrombone');
-        let audioContext, mediaStreamDest, mediaRecorder, audioChunks = [];
+      const pinkTrombone = document.getElementById("pinkTrombone");
+      let audioContext,
+        mediaStreamDest,
+        mediaRecorder,
+        audioChunks = [];
 
-        // Initialize Pink Trombone
-        async function initPinkTrombone() {
-            log('Initializing Pink Trombone...');
-            audioContext = new AudioContext();
+      // Initialize Pink Trombone
+      async function initPinkTrombone() {
+        log("Initializing Pink Trombone...");
+        audioContext = new AudioContext();
 
-            await pinkTrombone.setAudioContext(audioContext);
-            pinkTrombone.enableUI();
+        await pinkTrombone.setAudioContext(audioContext);
+        pinkTrombone.enableUI();
 
-            // Setup recording
-            mediaStreamDest = audioContext.createMediaStreamDestination();
-            pinkTrombone.recordingOutput.connect(mediaStreamDest);
-            mediaRecorder = new MediaRecorder(mediaStreamDest.stream);
+        // Setup recording
+        mediaStreamDest = audioContext.createMediaStreamDestination();
+        pinkTrombone.recordingOutput.connect(mediaStreamDest);
+        mediaRecorder = new MediaRecorder(mediaStreamDest.stream);
 
-            pinkTrombone.start();
-            log('Pink Trombone ready!', 'success');
-        }
+        pinkTrombone.start();
+        log("Pink Trombone ready!", "success");
+      }
 
-        // Wait for dictionary to load
-        window.onload = async () => {
-            await new Promise(resolve => {
-                const check = setInterval(() => {
-                    if (TextToIPA._IPADict && Object.keys(TextToIPA._IPADict).length > 0) {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 100);
-            });
+      // Wait for dictionary to load
+      window.onload = async () => {
+        await new Promise((resolve) => {
+          const check = setInterval(() => {
+            if (
+              TextToIPA._IPADict &&
+              Object.keys(TextToIPA._IPADict).length > 0
+            ) {
+              clearInterval(check);
+              resolve();
+            }
+          }, 100);
+        });
 
-            words = Object.keys(TextToIPA._IPADict);
-            log(`Dictionary loaded: ${words.length} words`);
+        words = Object.keys(TextToIPA._IPADict);
+        log(`Dictionary loaded: ${words.length} words`);
 
-            // Initialize after user clicks (required for audio context)
-            document.getElementById('startBtn').addEventListener('click', async () => {
-                if (!audioContext) {
-                    await initPinkTrombone();
-                }
-            }, { once: true });
-        };
-
-        window.startBatch = async function() {
+        // Initialize after user clicks (required for audio context)
+        document.getElementById("startBtn").addEventListener(
+          "click",
+          async () => {
             if (!audioContext) {
-                await initPinkTrombone();
+              await initPinkTrombone();
             }
+          },
+          { once: true },
+        );
+      };
 
-            const voiceSelect = document.getElementById('voice').value;
-            const startIndex = parseInt(document.getElementById('startIndex').value) || 0;
-            const batchSize = parseInt(document.getElementById('batchSize').value) || 100;
-
-            const voices = voiceSelect === 'both'
-                ? ['male', 'female']
-                : [voiceSelect];
-
-            isRunning = true;
-            processed = 0;
-            errors = 0;
-            startTime = Date.now();
-
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
-
-            const batchWords = words.slice(startIndex, startIndex + batchSize);
-            const totalTasks = batchWords.length * voices.length;
-
-            log(`Starting batch: ${batchWords.length} words, ${voices.length} voice(s)`);
-
-            for (const voice of voices) {
-                if (!isRunning) break;
-
-                const config = voiceConfigs[voice];
-                log(`Processing voice: ${voice}`);
-
-                for (const word of batchWords) {
-                    if (!isRunning) break;
-
-                    try {
-                        const result = await processWord(word, config);
-                        if (result) {
-                            results[voice].push(result);
-                            processed++;
-                        } else {
-                            errors++;
-                        }
-                    } catch (e) {
-                        log(`Error: ${word} - ${e.message}`, 'error');
-                        errors++;
-                    }
-
-                    updateProgress(processed + errors, totalTasks);
-                }
-            }
-
-            isRunning = false;
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
-            log('Batch complete!', 'success');
-        };
-
-        window.stopBatch = function() {
-            isRunning = false;
-            log('Stopping...');
-        };
-
-        async function processWord(word, config) {
-            // Get IPA
-            const ipa = TextToIPA._IPADict[word];
-            if (!ipa || !ipa[0]) return null;
-
-            // Set voice parameters
-            pinkTrombone.parameters.frequency.value = config.frequency;
-            pinkTrombone.setTractLength(config.tractLength);
-
-            // Generate keyframes
-            const keyframes = generateKeyframes(ipa[0], config);
-            if (!keyframes || keyframes.length === 0) return null;
-
-            // Synthesize and record
-            const audioBlob = await synthesize(keyframes);
-            if (!audioBlob) return null;
-
-            // Generate landmarks
-            const landmarks = generateLandmarks(ipa[0], keyframes);
-
-            return {
-                word,
-                ipa: ipa[0],
-                audio: audioBlob,
-                landmarks
-            };
+      window.startBatch = async function () {
+        if (!audioContext) {
+          await initPinkTrombone();
         }
 
-        function generateKeyframes(ipaString, config) {
+        const voiceSelect = document.getElementById("voice").value;
+        const startIndex =
+          parseInt(document.getElementById("startIndex").value) || 0;
+        const batchSize =
+          parseInt(document.getElementById("batchSize").value) || 100;
+
+        const voices =
+          voiceSelect === "both" ? ["male", "female"] : [voiceSelect];
+
+        isRunning = true;
+        processed = 0;
+        errors = 0;
+        startTime = Date.now();
+
+        document.getElementById("startBtn").disabled = true;
+        document.getElementById("stopBtn").disabled = false;
+
+        const batchWords = words.slice(startIndex, startIndex + batchSize);
+        const totalTasks = batchWords.length * voices.length;
+
+        log(
+          `Starting batch: ${batchWords.length} words, ${voices.length} voice(s)`,
+        );
+
+        for (const voice of voices) {
+          if (!isRunning) break;
+
+          const config = voiceConfigs[voice];
+          log(`Processing voice: ${voice}`);
+
+          for (const word of batchWords) {
+            if (!isRunning) break;
+
             try {
-                return constructKeyframes(ipaString, {
-                    frequency: config.frequency,
-                    tractLength: config.tractLength
-                });
+              const result = await processWord(word, config);
+              if (result) {
+                results[voice].push(result);
+                processed++;
+              } else {
+                errors++;
+              }
             } catch (e) {
-                return null;
-            }
-        }
-
-        function synthesize(keyframes) {
-            return new Promise((resolve) => {
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                    resolve(blob);
-                };
-
-                // Play keyframes
-                const duration = playKeyframes(keyframes);
-
-                mediaRecorder.start();
-                setTimeout(() => {
-                    mediaRecorder.stop();
-                }, duration * 1000 + 100);
-            });
-        }
-
-        function playKeyframes(keyframes) {
-            let maxTime = 0;
-            keyframes.forEach(kf => {
-                const time = kf.time * 1000;
-                maxTime = Math.max(maxTime, time);
-
-                setTimeout(() => {
-                    if (kf.frequency) pinkTrombone.parameters.frequency.value = kf.frequency;
-                    if (kf.intensity !== undefined) pinkTrombone.parameters.intensity.value = kf.intensity;
-                    if (kf.tenseness !== undefined) pinkTrombone.parameters.tenseness.value = kf.tenseness;
-                    if (kf.loudness !== undefined) pinkTrombone.parameters.loudness.value = kf.loudness;
-
-                    if (kf['tongue.index'] !== undefined) {
-                        pinkTrombone.tongueTouch.index = kf['tongue.index'];
-                        pinkTrombone.tongueTouch.diameter = kf['tongue.diameter'] || 2.5;
-                    }
-                    if (kf['frontConstriction.index'] !== undefined && pinkTrombone.frontConstriction) {
-                        pinkTrombone.frontConstriction.index = kf['frontConstriction.index'];
-                        pinkTrombone.frontConstriction.diameter = kf['frontConstriction.diameter'] || 1.5;
-                    }
-                }, time);
-            });
-
-            return maxTime / 1000 + 0.1;
-        }
-
-        function generateLandmarks(ipaString, keyframes) {
-            // Simple landmark generation based on phoneme types
-            const landmarks = [];
-            const phonemeTypes = {
-                vowels: 'aeiouæɑɒʌəɛɪɔʊ',
-                stops: 'bdgkpt',
-                fricatives: 'fvszʃʒθðh',
-                nasals: 'mnŋ',
-                glides: 'wjlr'
-            };
-
-            let time = 0;
-            for (const char of ipaString) {
-                const kf = keyframes.find(k => k.name === char);
-                if (kf) time = kf.time;
-
-                if (phonemeTypes.vowels.includes(char)) {
-                    landmarks.push({ type: 'V', time, name: char });
-                } else if (phonemeTypes.stops.includes(char)) {
-                    landmarks.push({ type: 'Sc', time, name: char });
-                    landmarks.push({ type: 'Sr', time: time + 0.05, name: char });
-                } else if (phonemeTypes.fricatives.includes(char)) {
-                    landmarks.push({ type: 'Fc', time, name: char });
-                    landmarks.push({ type: 'Fr', time: time + 0.05, name: char });
-                } else if (phonemeTypes.nasals.includes(char)) {
-                    landmarks.push({ type: 'Nc', time, name: char });
-                    landmarks.push({ type: 'Nr', time: time + 0.05, name: char });
-                } else if (phonemeTypes.glides.includes(char)) {
-                    landmarks.push({ type: 'G', time, name: char });
-                }
+              log(`Error: ${word} - ${e.message}`, "error");
+              errors++;
             }
 
-            return landmarks;
+            updateProgress(processed + errors, totalTasks);
+          }
         }
 
-        function updateProgress(current, total) {
-            const pct = total > 0 ? (current / total * 100).toFixed(1) : 0;
-            document.getElementById('progressText').textContent = `${current} / ${total}`;
-            document.getElementById('progressFill').style.width = pct + '%';
-            document.getElementById('processedCount').textContent = processed;
-            document.getElementById('errorCount').textContent = errors;
+        isRunning = false;
+        document.getElementById("startBtn").disabled = false;
+        document.getElementById("stopBtn").disabled = true;
+        log("Batch complete!", "success");
+      };
 
-            // Calculate speed and ETA
-            const elapsed = (Date.now() - startTime) / 1000 / 60; // minutes
-            const speed = elapsed > 0 ? (current / elapsed).toFixed(1) : 0;
-            document.getElementById('speedStat').textContent = speed;
+      window.stopBatch = function () {
+        isRunning = false;
+        log("Stopping...");
+      };
 
-            const remaining = total - current;
-            const etaMinutes = speed > 0 ? (remaining / speed).toFixed(0) : '--';
-            document.getElementById('etaStat').textContent = etaMinutes === '--' ? '--' : `${etaMinutes}m`;
+      async function processWord(word, config) {
+        // Get IPA
+        const ipa = TextToIPA._IPADict[word];
+        if (!ipa || !ipa[0]) return null;
+
+        // Set voice parameters
+        pinkTrombone.parameters.frequency.value = config.frequency;
+        pinkTrombone.setTractLength(config.tractLength);
+
+        // Generate keyframes
+        const keyframes = generateKeyframes(ipa[0], config);
+        if (!keyframes || keyframes.length === 0) return null;
+
+        // Synthesize and record
+        const audioBlob = await synthesize(keyframes);
+        if (!audioBlob) return null;
+
+        // Generate landmarks
+        const landmarks = generateLandmarks(ipa[0], keyframes);
+
+        return {
+          word,
+          ipa: ipa[0],
+          audio: audioBlob,
+          landmarks,
+        };
+      }
+
+      function generateKeyframes(ipaString, config) {
+        try {
+          return constructKeyframes(ipaString, {
+            frequency: config.frequency,
+            tractLength: config.tractLength,
+          });
+        } catch (e) {
+          return null;
         }
+      }
 
-        window.downloadResults = function() {
-            // Create a zip-like structure with JSON
-            const output = {
-                generated: new Date().toISOString(),
-                male: results.male.map(r => ({
-                    word: r.word,
-                    ipa: r.ipa,
-                    landmarks: r.landmarks
-                })),
-                female: results.female.map(r => ({
-                    word: r.word,
-                    ipa: r.ipa,
-                    landmarks: r.landmarks
-                }))
-            };
+      function synthesize(keyframes) {
+        return new Promise((resolve) => {
+          audioChunks = [];
 
-            // Download JSON
-            const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `landmarks_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
+          mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(audioChunks, { type: "audio/webm" });
+            resolve(blob);
+          };
 
-            // Also offer to download audio files
-            log('Downloading landmarks JSON...', 'success');
-            log('Audio files are stored in memory. Use "Download Audio" for individual files.');
+          // Play keyframes
+          const duration = playKeyframes(keyframes);
+
+          mediaRecorder.start();
+          setTimeout(
+            () => {
+              mediaRecorder.stop();
+            },
+            duration * 1000 + 100,
+          );
+        });
+      }
+
+      function playKeyframes(keyframes) {
+        let maxTime = 0;
+        keyframes.forEach((kf) => {
+          const time = kf.time * 1000;
+          maxTime = Math.max(maxTime, time);
+
+          setTimeout(() => {
+            if (kf.frequency)
+              pinkTrombone.parameters.frequency.value = kf.frequency;
+            if (kf.intensity !== undefined)
+              pinkTrombone.parameters.intensity.value = kf.intensity;
+            if (kf.tenseness !== undefined)
+              pinkTrombone.parameters.tenseness.value = kf.tenseness;
+            if (kf.loudness !== undefined)
+              pinkTrombone.parameters.loudness.value = kf.loudness;
+
+            if (kf["tongue.index"] !== undefined) {
+              pinkTrombone.tongueTouch.index = kf["tongue.index"];
+              pinkTrombone.tongueTouch.diameter = kf["tongue.diameter"] || 2.5;
+            }
+            if (
+              kf["frontConstriction.index"] !== undefined &&
+              pinkTrombone.frontConstriction
+            ) {
+              pinkTrombone.frontConstriction.index =
+                kf["frontConstriction.index"];
+              pinkTrombone.frontConstriction.diameter =
+                kf["frontConstriction.diameter"] || 1.5;
+            }
+          }, time);
+        });
+
+        return maxTime / 1000 + 0.1;
+      }
+
+      function generateLandmarks(ipaString, keyframes) {
+        // Simple landmark generation based on phoneme types
+        const landmarks = [];
+        const phonemeTypes = {
+          vowels: "aeiouæɑɒʌəɛɪɔʊ",
+          stops: "bdgkpt",
+          fricatives: "fvszʃʒθðh",
+          nasals: "mnŋ",
+          glides: "wjlr",
         };
 
-        function log(message, type = '') {
-            const logEl = document.getElementById('log');
-            const entry = document.createElement('div');
-            entry.className = 'log-entry' + (type ? ` log-${type}` : '');
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logEl.appendChild(entry);
-            logEl.scrollTop = logEl.scrollHeight;
+        let time = 0;
+        for (const char of ipaString) {
+          const kf = keyframes.find((k) => k.name === char);
+          if (kf) time = kf.time;
+
+          if (phonemeTypes.vowels.includes(char)) {
+            landmarks.push({ type: "V", time, name: char });
+          } else if (phonemeTypes.stops.includes(char)) {
+            landmarks.push({ type: "Sc", time, name: char });
+            landmarks.push({ type: "Sr", time: time + 0.05, name: char });
+          } else if (phonemeTypes.fricatives.includes(char)) {
+            landmarks.push({ type: "Fc", time, name: char });
+            landmarks.push({ type: "Fr", time: time + 0.05, name: char });
+          } else if (phonemeTypes.nasals.includes(char)) {
+            landmarks.push({ type: "Nc", time, name: char });
+            landmarks.push({ type: "Nr", time: time + 0.05, name: char });
+          } else if (phonemeTypes.glides.includes(char)) {
+            landmarks.push({ type: "G", time, name: char });
+          }
         }
+
+        return landmarks;
+      }
+
+      function updateProgress(current, total) {
+        const pct = total > 0 ? ((current / total) * 100).toFixed(1) : 0;
+        document.getElementById("progressText").textContent =
+          `${current} / ${total}`;
+        document.getElementById("progressFill").style.width = pct + "%";
+        document.getElementById("processedCount").textContent = processed;
+        document.getElementById("errorCount").textContent = errors;
+
+        // Calculate speed and ETA
+        const elapsed = (Date.now() - startTime) / 1000 / 60; // minutes
+        const speed = elapsed > 0 ? (current / elapsed).toFixed(1) : 0;
+        document.getElementById("speedStat").textContent = speed;
+
+        const remaining = total - current;
+        const etaMinutes = speed > 0 ? (remaining / speed).toFixed(0) : "--";
+        document.getElementById("etaStat").textContent =
+          etaMinutes === "--" ? "--" : `${etaMinutes}m`;
+      }
+
+      window.downloadResults = function () {
+        // Create a zip-like structure with JSON
+        const output = {
+          generated: new Date().toISOString(),
+          male: results.male.map((r) => ({
+            word: r.word,
+            ipa: r.ipa,
+            landmarks: r.landmarks,
+          })),
+          female: results.female.map((r) => ({
+            word: r.word,
+            ipa: r.ipa,
+            landmarks: r.landmarks,
+          })),
+        };
+
+        // Download JSON
+        const blob = new Blob([JSON.stringify(output, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `landmarks_${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+
+        // Also offer to download audio files
+        log("Downloading landmarks JSON...", "success");
+        log(
+          'Audio files are stored in memory. Use "Download Audio" for individual files.',
+        );
+      };
+
+      function log(message, type = "") {
+        const logEl = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.className = "log-entry" + (type ? ` log-${type}` : "");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
     </script>
-</body>
+  </body>
 </html>

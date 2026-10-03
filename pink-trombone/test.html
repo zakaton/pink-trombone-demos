@@ -1,13 +1,13 @@
 <html>
   <head>
-    <script src="/src/utils.js"></script>
+    <script src="../src/utils.js"></script>
 
-    <script src="/pink-trombone/src/pink-trombone.min.js" type="module"></script>
+    <script src="./src/pink-trombone.min.js" type="module"></script>
   </head>
 
   <body>
     <nav>
-      <a href="../../">home</a>
+      <a href="../">home</a>
     </nav>
     <div style="position: absolute; left: 0; top: 0; z-index: 100">
       <select id="microphoneSelect" hidden>
@@ -26,11 +26,15 @@
       const pinkTromboneElement = document.querySelector("pink-trombone");
 
       pinkTromboneElement.addEventListener("load", (event) => {
-        pinkTromboneElement.setAudioContext(audioContext).then((pinkTrombone) => {
-          pinkTromboneElement.enableUI();
-          pinkTromboneElement.startUI();
-          pinkTromboneElement.connect(pinkTromboneElement.audioContext.destination);
-        });
+        pinkTromboneElement
+          .setAudioContext(audioContext)
+          .then((pinkTrombone) => {
+            pinkTromboneElement.enableUI();
+            pinkTromboneElement.startUI();
+            pinkTromboneElement.connect(
+              pinkTromboneElement.audioContext.destination,
+            );
+          });
       });
     </script>
 
@@ -39,7 +43,8 @@
       var mediaStream;
       /** @type {MediaStreamAudioSourceNode|undefined} */
       var mediaStreamSourceNode;
-      const toggleMicrophoneButton = document.getElementById("toggleMicrophone");
+      const toggleMicrophoneButton =
+        document.getElementById("toggleMicrophone");
       toggleMicrophoneButton.addEventListener("click", async () => {
         if (isMicrophoneOn()) {
           stopMicrophone();
@@ -63,8 +68,11 @@
             echoCancellation: false,
           },
         });
-        mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
-        mediaStreamSourceNode.connect(pinkTromboneElement.pinkTrombone._pinkTromboneNode);
+        mediaStreamSourceNode =
+          audioContext.createMediaStreamSource(mediaStream);
+        mediaStreamSourceNode.connect(
+          pinkTromboneElement.pinkTrombone._pinkTromboneNode,
+        );
         pinkTromboneElement.pinkTrombone._fricativeFilter.disconnect();
         pinkTromboneElement.pinkTrombone._aspirateFilter.disconnect();
 
@@ -82,10 +90,10 @@
           toggleMicrophoneButton.innerText = "enable microphone";
 
           pinkTromboneElement.pinkTrombone._fricativeFilter.connect(
-            pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+            pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise,
           );
           pinkTromboneElement.pinkTrombone._aspirateFilter.connect(
-            pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+            pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise,
           );
         }
       };
@@ -96,12 +104,16 @@
       const microphoneOptGroup = document.getElementById("microphoneOptGroup");
       const updateMicrophoneSelect = async () => {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const microphones = devices.filter((device) => device.kind == "audioinput");
+        const microphones = devices.filter(
+          (device) => device.kind == "audioinput",
+        );
         if (microphones.length > 0) {
           microphoneSelect.removeAttribute("hidden");
           microphoneOptGroup.innerHTML = "";
           microphones.forEach((microphone) => {
-            microphoneOptGroup.appendChild(new Option(microphone.label, microphone.deviceId));
+            microphoneOptGroup.appendChild(
+              new Option(microphone.label, microphone.deviceId),
+            );
           });
         } else {
           microphoneSelect.setAttribute("hidden", "");
