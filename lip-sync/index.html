@@ -15,7 +15,7 @@
   </style>
   <body>
     <nav>
-      <a href="../../">home</a>
+      <a href="../">home</a>
     </nav>
     <div id="overlay">
       <button onclick="resetMouth()">reset</button>
@@ -24,7 +24,13 @@
         <template>
           <div class="morphTarget">
             <label
-              ><span></span><input type="range" min="-1" max="1" value="0" step="0.01" /><input
+              ><span></span
+              ><input
+                type="range"
+                min="-1"
+                max="1"
+                value="0"
+                step="0.01" /><input
                 type="number"
                 value="0"
                 min="-1"
@@ -35,9 +41,15 @@
         </template>
       </div>
     </div>
-    <a-scene renderer="colorManagement: true; antialias: false;" vr-mode-ui="enabled: false">
+    <a-scene
+      renderer="colorManagement: true; antialias: false;"
+      vr-mode-ui="enabled: false"
+    >
       <a-assets>
-        <a-asset-item id="readyPlayerMe" src="/lip-sync/avatar.glb"></a-asset-item>
+        <a-asset-item
+          id="readyPlayerMe"
+          src="/lip-sync/avatar.glb"
+        ></a-asset-item>
       </a-assets>
       <a-entity id="avatar" gltf-model="#readyPlayerMe"></a-entity>
       <a-camera
