@@ -27,7 +27,7 @@ pinkTromboneElement.addEventListener("load", (event) => {
       }
 
       pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(
-        audioContext.destination
+        audioContext.destination,
       );
     } else {
       pinkTromboneElement.connect(pinkTromboneElement.audioContext.destination);
@@ -59,11 +59,11 @@ pinkTromboneElement.addEventListener("setConstriction", (event) => {
       case "linear":
         constriction.index.linearRampToValueAtTime(
           indexValue,
-          event.detail.endTime
+          event.detail.endTime,
         );
         constriction.diameter.linearRampToValueAtTime(
           diameterValue,
-          event.detail.endTime
+          event.detail.endTime,
         );
         break;
       default:
@@ -89,7 +89,7 @@ pinkTromboneElement.addEventListener("setParameter", (event) => {
 let isMouseDown = false;
 document.body.addEventListener("mousedown", (event) => {
   isMouseDown = true;
-  if (shouldSendConstrictions) {
+  if (true || shouldSendConstrictions) {
     updateConstriction();
     shouldSendConstrictions = false;
   }
@@ -102,7 +102,7 @@ document.body.addEventListener("mousemove", () => {
 });
 document.body.addEventListener("mouseup", (event) => {
   isMouseDown = false;
-  if (shouldSendConstrictions) {
+  if (true || shouldSendConstrictions) {
     updateConstriction();
     shouldSendConstrictions = false;
   }
@@ -141,7 +141,7 @@ const updateConstriction = throttle(() => {
   const isTongue = constrictionIndex == -1;
   if (isTongue) {
     const { index, diameter } = deconstructConstriction(
-      pinkTromboneElement.tongue
+      pinkTromboneElement.tongue,
     );
     message.constrictions.tongue = {
       index,
@@ -149,7 +149,7 @@ const updateConstriction = throttle(() => {
     };
   } else {
     const { index, diameter } = deconstructConstriction(
-      pinkTromboneElement.pinkTrombone._pinkTromboneNode._constrictions[2]
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode._constrictions[2],
     );
     if (!(index == 0 && diameter == 0)) {
       const isBackConstriction = index < getIndexThreshold();
@@ -288,12 +288,12 @@ const { send } = setupConnection("pink-trombone", (message) => {
             exponentialRampToValueAtTime(
               pinkTromboneElement.intensity,
               1,
-              0.1 * constrictions.length
+              0.1 * constrictions.length,
             );
             exponentialRampToValueAtTime(
               pinkTromboneElement.intensity,
               0,
-              0.1 * constrictions.length + 1
+              0.1 * constrictions.length + 1,
             );
           }
           const phonemeTimestamp = Date.now();
@@ -331,7 +331,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
             } else {
               exponentialRampToValueAtTime(
                 frontConstriction.diameter,
-                frontConstriction.diameter.maxValue
+                frontConstriction.diameter.maxValue,
               );
             }
             if (back) {
@@ -348,7 +348,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
             } else {
               exponentialRampToValueAtTime(
                 backConstriction.diameter,
-                backConstriction.diameter.maxValue
+                backConstriction.diameter.maxValue,
               );
             }
             //console.log("notes", nodes);
@@ -418,14 +418,14 @@ const { send } = setupConnection("pink-trombone", (message) => {
         node.relativeValues = node.relativeValues ?? [];
         if (message.isRelative) {
           const relativeValueObject = node.relativeValues.find(
-            ({ key }) => key == message.relativeValueKey
+            ({ key }) => key == message.relativeValueKey,
           );
           if (relativeValueObject) {
             relativeValueObject.value = valueNumber;
             if (relativeValueObject.value == 0) {
               node.relativeValues.splice(
                 node.relativeValues.indexOf(relativeValueObject),
-                1
+                1,
               );
             }
           } else if (valueNumber != 0) {
@@ -490,7 +490,7 @@ function exponentialRampToValueAtTime(node, value, offset = 0.01) {
   node.cancelAndHoldAtTime(pinkTromboneElement.audioContext.currentTime);
   node.exponentialRampToValueAtTime(
     value,
-    pinkTromboneElement.audioContext.currentTime + offset
+    pinkTromboneElement.audioContext.currentTime + offset,
   );
   pendingNodes.add(node);
 }
@@ -558,7 +558,7 @@ function playKeyframes(keyframes, offset = 0) {
       const offset = keyframe.time;
       node.linearRampToValueAtTime(
         value,
-        pinkTromboneElement.audioContext.currentTime + offset
+        pinkTromboneElement.audioContext.currentTime + offset,
       );
     });
   });
@@ -623,7 +623,7 @@ const getMicrophone = async () => {
   }
   mediaStreamSourceNode = audioContext.createMediaStreamSource(mediaStream);
   mediaStreamSourceNode.connect(
-    pinkTromboneElement.pinkTrombone._pinkTromboneNode
+    pinkTromboneElement.pinkTrombone._pinkTromboneNode,
   );
   pinkTromboneElement.pinkTrombone._fricativeFilter.disconnect();
   pinkTromboneElement.pinkTrombone._aspirateFilter.disconnect();
@@ -642,10 +642,10 @@ const stopMicrophone = () => {
     toggleMicrophoneButton.innerText = "enable microphone";
 
     pinkTromboneElement.pinkTrombone._fricativeFilter.connect(
-      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise,
     );
     pinkTromboneElement.pinkTrombone._aspirateFilter.connect(
-      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode.noise,
     );
   }
 };
@@ -662,7 +662,7 @@ const updateMicrophoneSelect = async () => {
     microphoneOptGroup.innerHTML = "";
     microphones.forEach((microphone) => {
       microphoneOptGroup.appendChild(
-        new Option(microphone.label, microphone.deviceId)
+        new Option(microphone.label, microphone.deviceId),
       );
     });
     didCheckMicrophonesOnce = true;
