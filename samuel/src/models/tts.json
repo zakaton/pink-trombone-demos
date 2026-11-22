@@ -1,0 +1,24 @@
+{
+ "frame_rate": 86.1328125,
+ "latent_rate": 10.7666015625,
+ "stack": 8,
+ "n_layers": 6,
+ "n_heads": 4,
+ "head_dim": 64,
+ "d_model": 256,
+ "ldim": 64,
+ "temp": 0.3,
+ "cfg": 2.0,
+ "eos_threshold": -1.0,
+ "max_seconds": 20.0,
+ "max_chars": 300,
+ "trainable": [
+  "voiceness",
+  "intensity",
+  "tongueIndex",
+  "tongueDiameter",
+  "constrictionIndex",
+  "constrictionDiameter",
+  "lipDiameter"
+ ]
+}

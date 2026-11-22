@@ -1,0 +1,346 @@
+<html>
+  <head>
+    <title>Samuel</title>
+    <script src="../src/utils.js"></script>
+    <style>
+      :root {
+        --bg: #17131c;
+        --card: #211b29;
+        --ink: #e9e1ee;
+        --mute: #9b8fa8;
+        --line: #352c41;
+        --hot: #ff6b9a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+      }
+      a {
+        color: var(--mute);
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        padding: 14px 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 24px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--mute);
+      }
+      textarea,
+      input,
+      select,
+      button {
+        font: inherit;
+        color: var(--ink);
+        background: #2b2335;
+        border: 1px solid #43385a;
+        border-radius: 6px;
+        padding: 6px 9px;
+      }
+      textarea {
+        width: 100%;
+        resize: vertical;
+        margin-bottom: 10px;
+      }
+      input[type="checkbox"] {
+        padding: 0;
+      }
+      input[type="number"] {
+        width: 64px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--hot);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .primary {
+        background: var(--hot);
+        border-color: var(--hot);
+        color: #2a0f1a;
+        font-weight: 600;
+      }
+      #record.recording {
+        background: #c0392b;
+        border-color: #c0392b;
+        color: #fff;
+        animation: pulse 1.2s infinite;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.7;
+        }
+      }
+      #status {
+        color: var(--mute);
+        min-height: 1.2em;
+      }
+      #status.err {
+        color: #ff8a8a;
+      }
+      audio {
+        height: 32px;
+        max-width: 100%;
+      }
+      #info {
+        color: var(--mute);
+        margin-left: auto;
+      }
+      #viz {
+        display: none;
+        margin-top: 12px;
+      }
+      #viz.on {
+        display: flex;
+      }
+      #vizLabels {
+        width: 170px;
+        flex: none;
+      }
+      .lbl {
+        height: 64px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding-left: 8px;
+        border-left: 4px solid;
+        gap: 2px;
+      }
+      .lbl span {
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+        min-height: 1.2em;
+      }
+      #vizWrap {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+      }
+      canvas {
+        display: block;
+      }
+      #vizWrap {
+        touch-action: none;
+        user-select: none;
+        cursor: crosshair;
+      }
+      #playhead,
+      #hover {
+        position: absolute;
+        top: 0;
+        bottom: 24px;
+        left: 0;
+        width: 1px;
+        pointer-events: none;
+        display: none;
+      }
+      #playhead {
+        background: var(--hot);
+        width: 2px;
+        z-index: 2;
+      }
+      #hover {
+        background: rgba(255, 255, 255, 0.45);
+      }
+      .hint {
+        color: var(--mute);
+        font-size: 12px;
+        margin: 8px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="../">home</a>
+      <h1>Samuel</h1>
+      <span id="status">loading…</span>
+    </header>
+    <main>
+      <section class="card">
+        <h2>Text to articulation</h2>
+        <textarea
+          id="text"
+          placeholder="type something to say (Enter to generate, Shift+Enter for a new line)"
+          rows="3"
+        ></textarea>
+        <div class="row">
+          <button id="textToArticulation" disabled>generate keyframes</button>
+          <label
+            ><input type="checkbox" id="autoPlay" checked /> play on Pink
+            Trombone when ready</label
+          >
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Audio to articulation</h2>
+        <div class="row">
+          <label
+            >audio file
+            <input type="file" accept="audio/*" id="audioInput" disabled
+          /></label>
+          <span style="color: var(--mute)">or</span>
+          <select id="micDevice" title="microphone">
+            <option value="">default microphone</option>
+          </select>
+          <button id="record" disabled>record</button>
+          <audio id="source" controls hidden></audio>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Articulation</h2>
+        <div class="row">
+          <button id="play" class="primary" disabled style="min-width: 76px">
+            play
+          </button>
+          <button id="stop" disabled>stop</button>
+          <button id="sendToTimeline" disabled>send to timeline</button>
+          <label
+            ><input type="checkbox" id="scrub" checked /> drag graphs to
+            hear</label
+          >
+          <label
+            ><input type="checkbox" id="simplify" /> simplify keyframes</label
+          >
+          <label
+            >tolerance
+            <input
+              type="number"
+              id="tolerance"
+              value="0.5"
+              min="0"
+              step="0.1"
+            />
+            %</label
+          >
+          <label>
+            vocal tract length
+            <input
+              type="range"
+              id="tractSlider"
+              min="15"
+              max="88"
+              step="1"
+              value="44"
+            />
+            <input
+              type="number"
+              id="tract"
+              min="15"
+              max="88"
+              step="1"
+              value="44"
+            />
+          </label>
+          <button id="tractReset" title="back to the default length of 44">
+            44
+          </button>
+          <span id="info"></span>
+        </div>
+        <div class="row" id="mixControls" style="margin-top: 10px" hidden>
+          <label>
+            listen to
+            <select id="mix">
+              <option value="articulation">articulation</option>
+              <option value="both">both (recording + articulation)</option>
+              <option value="recording">recording only</option>
+            </select>
+          </label>
+          <label
+            >recording volume
+            <input
+              type="range"
+              id="mixVolume"
+              min="0"
+              max="1"
+              step="0.05"
+              value="0.7"
+          /></label>
+          <label
+            title="positive: the recording starts later than the articulation; negative: the articulation starts later"
+            >sync offset
+            <input
+              type="number"
+              id="syncOffset"
+              value="0"
+              step="10"
+              style="width: 72px"
+            />
+            ms</label
+          >
+        </div>
+        <div id="viz">
+          <div id="vizLabels"></div>
+          <div id="vizWrap">
+            <canvas id="vizCanvas"></canvas>
+            <div id="hover"></div>
+            <div id="playhead"></div>
+          </div>
+        </div>
+        <p class="hint">
+          Open the Pink Trombone page in another tab and click it once so it can
+          make sound. Space plays and pauses (when you aren't typing) and picks
+          up where it left off; the stop button rewinds. Click anywhere on the
+          graphs to move the playback position, then press play or Space to
+          start from there. Hover the graphs to read the values at any moment,
+          or click and drag across them to hear that moment live (with "listen
+          to" set to recording or both, you hear the original audio at that
+          point too). For audio files and recordings, "listen to" lets you hear
+          the original, the articulation, or both at once; nudge the sync offset
+          if they sound slightly apart. Samuel's articulation is built for a
+          vocal tract length of 44; a different length scales the tongue,
+          constriction and lip positions with it. Simplify drops keyframes that
+          a straight line between their neighbours already reproduces, which
+          makes the result lighter to play and easier to edit in the timeline.
+        </p>
+      </section>
+    </main>
+  </body>
+  <script src="./src/script.js" type="module"></script>
+</html>

@@ -2,7 +2,7 @@ const audioContext = new AudioContext();
 autoResumeAudioContext(audioContext);
 
 const pinkTromboneElement = document.querySelector("pink-trombone");
-let frontConstriction, backConstriction;
+let frontConstriction, backConstriction, lipConstriction;
 
 let frequencyNode;
 pinkTromboneElement.addEventListener("load", (event) => {
@@ -36,11 +36,20 @@ pinkTromboneElement.addEventListener("load", (event) => {
     frontConstriction = pinkTromboneElement.newConstriction(43, 1.8);
     pinkTromboneElement.frontConstriction = frontConstriction;
     frontConstriction._isEnabled = true;
+
     backConstriction = pinkTromboneElement.newConstriction(10.5, 1.8);
     pinkTromboneElement.backConstriction = backConstriction;
+    backConstriction._isEnabled = true;
+
+    // Wide open (diameter 5), so it has no effect until it is moved.
+    lipConstriction = pinkTromboneElement.newConstriction(44, 5);
+    pinkTromboneElement.lipConstriction = lipConstriction;
+
     if (typeof searchParams.get("dark") == "string") {
       toggleDarkMode();
     }
+    pinkTromboneElement.querySelector("#wobble").click();
+    pinkTromboneElement.querySelector("#voice").click();
   });
 });
 
@@ -89,7 +98,7 @@ pinkTromboneElement.addEventListener("setParameter", (event) => {
 let isMouseDown = false;
 document.body.addEventListener("mousedown", (event) => {
   isMouseDown = true;
-  if (true || shouldSendConstrictions) {
+  if (shouldSendConstrictions) {
     updateConstriction();
     shouldSendConstrictions = false;
   }
@@ -102,7 +111,7 @@ document.body.addEventListener("mousemove", () => {
 });
 document.body.addEventListener("mouseup", (event) => {
   isMouseDown = false;
-  if (true || shouldSendConstrictions) {
+  if (shouldSendConstrictions) {
     updateConstriction();
     shouldSendConstrictions = false;
   }
@@ -148,9 +157,15 @@ const updateConstriction = throttle(() => {
       diameter,
     };
   } else {
-    const { index, diameter } = deconstructConstriction(
-      pinkTromboneElement.pinkTrombone._pinkTromboneNode._constrictions[2],
-    );
+    // the slot the mouse touch uses: the first one that isn't front, back or lip
+    const touchConstriction =
+      pinkTromboneElement.pinkTrombone._pinkTromboneNode._constrictions.find(
+        (constriction) =>
+          ![frontConstriction, backConstriction, lipConstriction].includes(
+            constriction,
+          ),
+      );
+    const { index, diameter } = deconstructConstriction(touchConstriction);
     if (!(index == 0 && diameter == 0)) {
       const isBackConstriction = index < getIndexThreshold();
       const targetConstriction = isBackConstriction
@@ -233,6 +248,12 @@ const { send } = setupConnection("pink-trombone", (message) => {
         break;
       case "backConstriction.diameter":
         node = backConstriction.diameter;
+        break;
+      case "lipConstriction.index":
+        node = lipConstriction.index;
+        break;
+      case "lipConstriction.diameter":
+        node = lipConstriction.diameter;
         break;
       case "tenseness":
         if (didSetVoiceness) {
@@ -351,6 +372,7 @@ const { send } = setupConnection("pink-trombone", (message) => {
                 backConstriction.diameter.maxValue,
               );
             }
+            exponentialRampToValueAtTime(lipConstriction.diameter, 5); // phonemes don't use the lips: reopen them
             //console.log("notes", nodes);
             nodes.forEach(({ node, value }) => {
               // FIX timing
@@ -476,6 +498,7 @@ function sendConstrictions() {
       tongue: deconstructConstriction(pinkTromboneElement.tongue),
       frontConstriction: deconstructConstriction(frontConstriction),
       backConstriction: deconstructConstriction(backConstriction),
+      lipConstriction: deconstructConstriction(lipConstriction),
     },
     voiceness: _voiceness,
   };
@@ -506,6 +529,9 @@ const keyframeStrings = [
 
   "backConstriction.index",
   "backConstriction.diameter",
+
+  "lipConstriction.index",
+  "lipConstriction.diameter",
 
   "tenseness",
   "loudness",

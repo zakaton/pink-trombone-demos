@@ -1,0 +1,187 @@
+{
+ "sample_rate": 44100,
+ "samples_per_frame": 512,
+ "frame_rate": 86.1328125,
+ "target_rms": 0.05,
+ "trainable": [
+  "voiceness",
+  "intensity",
+  "tongueIndex",
+  "tongueDiameter",
+  "constrictionIndex",
+  "constrictionDiameter",
+  "lipDiameter"
+ ],
+ "param_spec": {
+  "constrictionDiameter": [
+   -2.0,
+   3.0,
+   1.25
+  ],
+  "constrictionIndex": [
+   22.0,
+   39.0,
+   33.0
+  ],
+  "intensity": [
+   0.0,
+   1.0,
+   1.0
+  ],
+  "lipDiameter": [
+   0.0,
+   3.0,
+   1.25
+  ],
+  "tongueDiameter": [
+   1.5,
+   3.5,
+   2.4
+  ],
+  "tongueIndex": [
+   10.0,
+   35.0,
+   20.0
+  ],
+  "voiceness": [
+   0.0,
+   1.0,
+   0.6
+  ]
+ },
+ "frozen_values": {
+  "tractLength": 44.0,
+  "vibratoFrequency": 6.0,
+  "vibratoGain": 0.0,
+  "vibratoWobble": 0.0
+ },
+ "n_buckets": 32,
+ "stream_states": [
+  [
+   1,
+   6
+  ],
+  [
+   32,
+   2
+  ],
+  [
+   16,
+   0
+  ],
+  [
+   32,
+   4
+  ],
+  [
+   16,
+   0
+  ],
+  [
+   32,
+   8
+  ],
+  [
+   16,
+   0
+  ],
+  [
+   32,
+   4
+  ],
+  [
+   64,
+   2
+  ],
+  [
+   32,
+   0
+  ],
+  [
+   64,
+   4
+  ],
+  [
+   32,
+   0
+  ],
+  [
+   64,
+   8
+  ],
+  [
+   32,
+   0
+  ],
+  [
+   64,
+   4
+  ],
+  [
+   128,
+   2
+  ],
+  [
+   64,
+   0
+  ],
+  [
+   128,
+   4
+  ],
+  [
+   64,
+   0
+  ],
+  [
+   128,
+   8
+  ],
+  [
+   64,
+   0
+  ],
+  [
+   128,
+   4
+  ],
+  [
+   256,
+   2
+  ],
+  [
+   128,
+   0
+  ],
+  [
+   256,
+   4
+  ],
+  [
+   128,
+   0
+  ],
+  [
+   256,
+   8
+  ],
+  [
+   128,
+   0
+  ],
+  [
+   256,
+   8
+  ],
+  [
+   512,
+   6
+  ]
+ ],
+ "receptive_field_samples": 5376,
+ "pyin": {
+  "fmin": 70.0,
+  "fmax": 500.0,
+  "frame_length": 4096
+ }
+}

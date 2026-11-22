@@ -1,0 +1,211 @@
+<html>
+  <head>
+    <title>Samuel live</title>
+    <script src="../src/utils.js"></script>
+    <style>
+      :root {
+        --bg: #17131c;
+        --card: #211b29;
+        --ink: #e9e1ee;
+        --mute: #9b8fa8;
+        --line: #352c41;
+        --hot: #ff6b9a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+      }
+      a {
+        color: var(--mute);
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        padding: 14px 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 24px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+      }
+      select,
+      input,
+      button {
+        font: inherit;
+        color: var(--ink);
+        background: #2b2335;
+        border: 1px solid #43385a;
+        border-radius: 6px;
+        padding: 6px 9px;
+      }
+      input[type="checkbox"] {
+        padding: 0;
+      }
+      input[type="number"] {
+        width: 64px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--hot);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      #start {
+        min-width: 90px;
+        background: var(--hot);
+        border-color: var(--hot);
+        color: #2a0f1a;
+        font-weight: 600;
+      }
+      #start.on {
+        background: #c0392b;
+        border-color: #c0392b;
+        color: #fff;
+      }
+      #status {
+        color: var(--mute);
+      }
+      #status.err {
+        color: #ff8a8a;
+      }
+      #stats {
+        margin-left: auto;
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+      }
+      #viz {
+        display: flex;
+        margin-top: 12px;
+      }
+      #vizLabels {
+        width: 170px;
+        flex: none;
+      }
+      .lbl {
+        height: 56px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding-left: 8px;
+        border-left: 4px solid;
+        gap: 2px;
+      }
+      .lbl span {
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+      }
+      #vizWrap {
+        flex: 1;
+        min-width: 0;
+      }
+      canvas {
+        display: block;
+      }
+      .hint {
+        color: var(--mute);
+        font-size: 12px;
+        margin: 10px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="../">home</a>
+      <h1>Samuel live</h1>
+      <span id="status">loading…</span>
+    </header>
+    <main>
+      <section class="card">
+        <div class="row">
+          <select id="micDevice" title="microphone">
+            <option value="">default microphone</option>
+          </select>
+          <button id="start" disabled>start</button>
+          <label
+            ><input type="checkbox" id="send" checked /> control Pink
+            Trombone</label
+          >
+          <label
+            >transpose
+            <input type="number" id="transpose" value="0" step="1" />
+            semitones</label
+          >
+          <label>
+            vocal tract length
+            <input
+              type="range"
+              id="tractSlider"
+              min="15"
+              max="88"
+              step="1"
+              value="44"
+            />
+            <input
+              type="number"
+              id="tract"
+              min="15"
+              max="88"
+              step="1"
+              value="44"
+            />
+          </label>
+          <button id="tractReset" title="back to the default length of 44">
+            44
+          </button>
+          <span id="stats"></span>
+        </div>
+        <div id="viz">
+          <div id="vizLabels"></div>
+          <div id="vizWrap"><canvas id="vizCanvas"></canvas></div>
+        </div>
+        <p class="hint">
+          Open the Pink Trombone page in another tab and click it once so it can
+          make sound. Wear headphones if you can: Samuel listens to the
+          microphone, so the speakers would feed back into it. Samuel's
+          articulation is built for a vocal tract length of 44: a different
+          length scales the tongue, constriction and lip positions with it, so
+          the same sounds are made in a longer or shorter tract. The graphs show
+          the last few seconds of what Samuel is hearing, as the parameters it
+          sends.
+        </p>
+      </section>
+    </main>
+  </body>
+  <script src="./src/script.js" type="module"></script>
+</html>

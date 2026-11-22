@@ -690,6 +690,9 @@ const createResultContainer = () => {
       // hooks for the timeline editor
       phonemeContainer.phoneme = phoneme;
       phonemeContainer.phonemeOffset = () => _keyframes[0]?.timeDelta ?? 0;
+      phonemeContainer.firstKeyframe = () => _keyframes[0];
+      phonemeContainer.mainKeyframe = () =>
+        _keyframes.find((keyframe) => !keyframe.isSilent);
       phonemeContainer.phonemeDuration = () =>
         _keyframes.reduce(
           (sum, keyframe) => sum + (keyframe.timeDelta || 0),
@@ -723,6 +726,9 @@ const createResultContainer = () => {
           }
         }
         _keyframe.tractLength = tractLength;
+        // Phonemes don't use the lips, so every keyframe holds the lip constriction wide open (diameter 5). That resets
+        // it after anything that had moved it (the timeline, Samuel, scrubbing), for playback, download and send to timeline.
+        _keyframe["lipConstriction.diameter"] ??= 5;
         delete _keyframe.timeDelta;
         _keyframes.push(_keyframe);
       }
