@@ -80,7 +80,7 @@
         flex: none;
       }
       .head {
-        height: 56px;
+        height: var(--lane, 96px);
         display: flex;
         align-items: center;
         gap: 6px;
@@ -152,13 +152,27 @@
       <button id="selAll">Select all (A)</button>
       <button id="selNone">Select none</button>
       <label
-        >selected keys
+        >interpolation
         <select id="interp">
-          <option>linear</option>
-          <option>ease</option>
-          <option>step</option>
-        </select>
-      </label>
+          <option value="bezier">bezier</option>
+          <option value="linear">linear</option>
+          <option value="step">constant</option>
+        </select></label
+      >
+      <label><input type="checkbox" id="freeOn" /> free handles</label>
+      <label
+        >lane height
+        <input id="laneH" type="range" min="48" max="360" value="96"
+      /></label>
+      <label
+        >handles
+        <select id="handleType">
+          <option value="auto">auto clamped</option>
+          <option value="vector">vector</option>
+          <option value="aligned">aligned</option>
+          <option value="free">free</option>
+        </select></label
+      >
       <span class="sep"></span>
       <button id="save">Save</button>
       <button id="load">Load</button>
@@ -175,12 +189,15 @@
       <div id="wrap"><canvas id="lanes"></canvas></div>
     </div>
     <p id="hint">
-      Open the Pink Trombone page in another tab and click it once. Double-click
-      a lane to add a key, drag keys to move them, drag on empty space to
-      box-select (shift adds), click a track name to select its keys, A selects
-      everything, Alt+A or Esc clears, Delete removes, I keys every track at the
-      playhead, Space plays, wheel zooms, shift+wheel pans, Ctrl/⌘Z undoes.
-      Loading an utterance JSON from the text-to-speech page works too.
+      Open the Pink Trombone page in another tab and click it once. Keys are
+      bezier F-curve points (tick free handles to make every dragged handle
+      independent; Ctrl/⌘+wheel or the slider resizes the lanes): select one to
+      show its handles and drag them (auto handles become aligned, vector become
+      free). Double-click a lane to add a key, drag or box-select keys, G grabs
+      and S scales the selection (X or Y to constrain, click or Enter confirms,
+      Esc cancels), T and V pick interpolation and handle type, A selects all, I
+      keys every track at the playhead, Space plays, Home fits the view, wheel
+      zooms, shift+wheel pans, Ctrl/⌘Z undoes.
     </p>
     <script src="./src/script.js"></script>
   </body>

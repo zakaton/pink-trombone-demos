@@ -690,6 +690,9 @@ const createResultContainer = () => {
       // hooks for the timeline editor
       phonemeContainer.phoneme = phoneme;
       phonemeContainer.phonemeOffset = () => _keyframes[0]?.timeDelta ?? 0;
+      phonemeContainer.firstKeyframe = () => _keyframes[0];
+      phonemeContainer.mainKeyframe = () =>
+        _keyframes.find((keyframe) => !keyframe.isSilent);
       phonemeContainer.phonemeDuration = () =>
         _keyframes.reduce(
           (sum, keyframe) => sum + (keyframe.timeDelta || 0),

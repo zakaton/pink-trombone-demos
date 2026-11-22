@@ -1,6 +1,6 @@
 (() => {
-  const LANE = 56,
-    PAD = 7;
+  let LANE = 96; // lane height in px, adjustable
+  const PAD = 7;
   // id, min, max, default, color
   const defs = [
     ["frequency", 20, 600, 140, "#c9a7ff"],
@@ -34,7 +34,9 @@
     wrap = $("wrap");
   const lx = lanes.getContext("2d"),
     rx = ruler.getContext("2d");
-  let dur = 3,
+  let modal = null,
+    mouse = { x: 0, y: 0 },
+    dur = 3,
     head = 0,
     v0 = 0,
     pps = 0,
@@ -45,6 +47,12 @@
     capturing = false;
   const sel = new Set(),
     undo = [];
+  const HC = {
+    auto: "#ffb3c7",
+    vector: "#8fe3a0",
+    aligned: "#c9a7ff",
+    free: "#2b2335",
+  }; // handle colors, as in Blender
 
   // ---------- evaluation ----------
   function ev(tr, t) {
@@ -58,18 +66,74 @@
     const a = k[i],
       b = k[i + 1];
     if (a.i === "step") return a.v;
-    let u = (t - a.t) / (b.t - a.t);
-    if (a.i === "ease") u = u * u * (3 - 2 * u);
-    return a.v + (b.v - a.v) * u;
+    if (a.i === "bezier" && a.hr && b.hl)
+      return clamp(bez(a, b, t), tr.min, tr.max);
+    return a.v + (b.v - a.v) * ((t - a.t) / (b.t - a.t));
+  }
+  // Cubic bezier segment a -> b, like a Blender F-curve: each key has a left and right handle stored as (time, value)
+  // offsets. Handles that would overlap are scaled down together so time stays monotonic.
+  function bez(a, b, t) {
+    const gap = b.t - a.t,
+      l1 = Math.max(0, a.hr[0]),
+      l2 = Math.max(0, -b.hl[0]),
+      s = l1 + l2 > gap ? gap / (l1 + l2) : 1;
+    const x1 = a.t + l1 * s,
+      y1 = a.v + a.hr[1] * s,
+      x2 = b.t - l2 * s,
+      y2 = b.v + b.hl[1] * s;
+    const P = (u, p0, p1, p2, p3) => {
+      const w = 1 - u;
+      return (
+        w * w * w * p0 +
+        3 * w * w * u * p1 +
+        3 * w * u * u * p2 +
+        u * u * u * p3
+      );
+    };
+    let lo = 0,
+      hi = 1,
+      u = 0.5;
+    for (let n = 0; n < 24; n++) {
+      u = (lo + hi) / 2;
+      P(u, a.t, x1, x2, b.t) < t ? (lo = u) : (hi = u);
+    }
+    return P(u, a.v, y1, y2, b.v);
+  }
+  // Handle types: auto (auto clamped), vector, aligned, free. Auto and vector are recomputed whenever keys change.
+  function fixHandles(tr) {
+    const ks = tr.keys;
+    ks.forEach((k, j) => {
+      if (k.i === "ease") k.i = "bezier"; // older projects
+      k.ht ||= "auto";
+      k.hl ||= [0, 0];
+      k.hr ||= [0, 0];
+      if (k.ht !== "auto" && k.ht !== "vector") return;
+      const p = ks[j - 1],
+        n = ks[j + 1],
+        dl = p ? (k.t - p.t) / 3 : n ? (n.t - k.t) / 3 : 0,
+        dr = n ? (n.t - k.t) / 3 : dl;
+      if (k.ht === "vector") {
+        k.hl = [-dl, p ? (p.v - k.v) / 3 : 0];
+        k.hr = [dr, n ? (n.v - k.v) / 3 : 0];
+        return;
+      }
+      const slope =
+        p && n && (k.v - p.v) * (k.v - n.v) < 0 ? (n.v - p.v) / (n.t - p.t) : 0; // extremes stay flat
+      k.hl = [-dl, -slope * dl];
+      k.hr = [dr, slope * dr];
+    });
   }
   const sortKeys = () =>
-    tracks.forEach((t) => t.keys.sort((a, b) => a.t - b.t));
+    tracks.forEach((t) => {
+      t.keys.sort((a, b) => a.t - b.t);
+      fixHandles(t);
+    });
   const setKey = (tr, t, v) => {
     v = clamp(v, tr.min, tr.max);
     const k = tr.keys.find((k) => Math.abs(k.t - t) < 0.001);
     if (k) k.v = v;
     else {
-      tr.keys.push({ t, v, i: "linear" });
+      tr.keys.push({ t, v, i: "bezier" });
       sortKeys();
     }
   };
@@ -106,11 +170,13 @@
           head,
           v0,
           pps,
+          lane: LANE,
           opts: {
             loop: $("loop").checked,
             snapOn: $("snapOn").checked,
             scrubOn: $("scrubOn").checked,
             silenceOn: $("silenceOn").checked,
+            freeOn: $("freeOn").checked,
           },
         }),
       );
@@ -136,6 +202,7 @@
         t.keys = s.keys.map((k) => ({ ...k }));
       }
     });
+    sortKeys();
     sel.clear();
     head = clamp(head, 0, dur);
     syncHeads();
@@ -160,6 +227,7 @@
     });
     dur = Math.max(0.5, ...kfs.map((k) => k.time ?? 0));
     $("dur").value = dur.toFixed(2);
+    sortKeys();
     head = 0;
     sel.clear();
     syncHeads();
@@ -251,7 +319,7 @@
         T.add(r(k.t));
         if (!n) return;
         if (k.i === "step") T.add(r(n.t - 0.001));
-        else if (k.i === "ease" || tr.id === "voiceness")
+        else if (k.i === "bezier" || tr.id === "voiceness")
           for (let s = k.t + 0.02; s < n.t; s += 0.02) T.add(r(s));
       }),
     );
@@ -363,6 +431,7 @@
       H = tracks.length * LANE;
     if (!W || !(pps > 0)) return; // pps is 0 until the first resize; drawing then would loop forever
     persist();
+    tracks.forEach(fixHandles);
     const step =
       [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10].find(
         (s) => s * pps >= 80,
@@ -398,6 +467,10 @@
       lx.fillRect(ex, 0, W - ex, H);
     }
     tracks.forEach((tr, i) => {
+      lx.save();
+      lx.beginPath();
+      lx.rect(0, i * LANE, W, LANE);
+      lx.clip();
       lx.globalAlpha = tr.on ? 1 : 0.3;
       lx.strokeStyle = tr.color;
       lx.lineWidth = 1.5;
@@ -417,7 +490,28 @@
         lx.strokeRect(-4, -4, 8, 8);
         lx.restore();
       });
-      lx.globalAlpha = 1;
+      tr.keys.forEach((k) => {
+        // handles of selected bezier keys, colored by handle type
+        if (!sel.has(k) || k.i !== "bezier") return;
+        const kx = tx(k.t),
+          ky = vy(i, tr, k.v);
+        ["hl", "hr"].forEach((side) => {
+          const hx = tx(k.t + k[side][0]),
+            hy = vy(i, tr, k.v + k[side][1]);
+          lx.strokeStyle = "rgba(255,255,255,.5)";
+          lx.beginPath();
+          lx.moveTo(kx, ky);
+          lx.lineTo(hx, hy);
+          lx.stroke();
+          lx.fillStyle = HC[k.ht];
+          lx.strokeStyle = "#17131c";
+          lx.beginPath();
+          lx.arc(hx, hy, 4.5, 0, 7);
+          lx.fill();
+          lx.stroke();
+        });
+      });
+      lx.restore();
     });
     const hx = Math.round(tx(head)) + 0.5;
     lx.strokeStyle = "#ff6b9a";
@@ -431,6 +525,15 @@
       lx.strokeStyle = "#ff6b9a";
       lx.fillRect(drag.x, drag.y, drag.x2 - drag.x, drag.y2 - drag.y);
       lx.strokeRect(drag.x, drag.y, drag.x2 - drag.x, drag.y2 - drag.y);
+    }
+    if (modal) {
+      lx.fillStyle = "#fff";
+      lx.font = "12px system-ui";
+      lx.fillText(
+        `${modal.type === "g" ? "grab" : "scale"}${modal.axis ? " " + modal.axis.toUpperCase() : ""} - X/Y constrain, click or Enter confirms, Esc cancels`,
+        8,
+        14,
+      );
     }
     rx.fillStyle = "#ff6b9a";
     rx.beginPath();
@@ -455,6 +558,14 @@
     draw();
   }
   new ResizeObserver(resize).observe(wrap);
+  function setLane(h) {
+    // headers follow through the --lane CSS variable
+    LANE = Math.round(clamp(h, 48, 360));
+    document.documentElement.style.setProperty("--lane", LANE + "px");
+    $("laneH").value = LANE;
+    resize();
+  }
+  $("laneH").oninput = (e) => setLane(+e.target.value);
 
   // ---------- mouse ----------
   const pos = (e) => {
@@ -474,10 +585,49 @@
       ),
     };
   };
+  const vAt = (i, tr, y) =>
+    tr.min + ((vy(i, tr, tr.min) - y) / (LANE - 2 * PAD)) * (tr.max - tr.min);
+  const handleAt = (x, y, li) => {
+    for (const k of sel) {
+      const tr = trackOf(k),
+        ti = tracks.indexOf(tr);
+      if (k.i !== "bezier" || ti !== li) continue;
+      for (const side of ["hl", "hr"])
+        if (
+          Math.hypot(
+            tx(k.t + k[side][0]) - x,
+            vy(ti, tr, k.v + k[side][1]) - y,
+          ) < 7
+        )
+          return { k, side, tr, ti };
+    }
+  };
+  // keep the opposite handle collinear with this one (in screen space), preserving its own length
+  function align(k, side, tr) {
+    const o = side === "hr" ? "hl" : "hr",
+      sc = (LANE - 2 * PAD) / (tr.max - tr.min);
+    const mx = k[side][0] * pps,
+      my = k[side][1] * sc,
+      ml = Math.hypot(mx, my) || 1,
+      ol = Math.hypot(k[o][0] * pps, k[o][1] * sc);
+    k[o] = [((-mx / ml) * ol) / pps, ((-my / ml) * ol) / sc];
+  }
   lanes.onmousedown = (e) => {
+    if (e.button !== 0) return;
+    if (modal) {
+      modal = null;
+      draw();
+      return;
+    } // click confirms grab/scale
     const { x, y } = pos(e),
-      { tr, hit } = hitKey(x, y);
+      { i: li, tr, hit } = hitKey(x, y);
     if (!tr) return;
+    const hh = handleAt(x, y, li);
+    if (hh) {
+      mark();
+      drag = { handle: hh };
+      return;
+    }
     if (hit) {
       if (e.shiftKey) sel.has(hit) ? sel.delete(hit) : sel.add(hit);
       else if (!sel.has(hit)) {
@@ -485,6 +635,7 @@
         sel.add(hit);
       }
       $("interp").value = hit.i;
+      $("handleType").value = hit.ht || "auto";
       mark();
       drag = {
         x,
@@ -507,6 +658,22 @@
     if (!drag) return;
     const { x, y } = pos(e);
     if (drag.scrub) return setHead(xt(x));
+    if (drag.handle) {
+      // dragging a handle turns auto into aligned and vector into free, like Blender
+      const { k, side, tr, ti } = drag.handle,
+        dt = xt(x) - k.t;
+      k[side] = [
+        side === "hr" ? Math.max(0, dt) : Math.min(0, dt),
+        vAt(ti, tr, y) - k.v,
+      ];
+      if ($("freeOn").checked)
+        k.ht = "free"; // free handles: never drag the other handle along
+      else if (k.ht === "auto") k.ht = "aligned";
+      else if (k.ht === "vector") k.ht = "free";
+      if (k.ht === "aligned") align(k, side, tr);
+      $("handleType").value = k.ht;
+      return draw();
+    }
     if (drag.box) {
       drag.x2 = x;
       drag.y2 = y;
@@ -553,6 +720,105 @@
     (tr ? [tr] : tracks).forEach((t) => t.keys.forEach((k) => sel.add(k)));
     draw();
   };
+  // G grabs and S scales the selected keys (with their handles). X / Y constrain to one axis, like Blender.
+  window.addEventListener("mousemove", (e) => {
+    mouse = pos(e);
+    if (modal) modalApply();
+  });
+  function startModal(type) {
+    if (!sel.size || playing) return;
+    mark();
+    const items = [...sel].map((k) => ({
+        k,
+        tr: trackOf(k),
+        t: k.t,
+        v: k.v,
+        hl: [...k.hl],
+        hr: [...k.hr],
+      })),
+      ts = items.map((o) => o.t),
+      pv = new Map();
+    tracks.forEach((tr) => {
+      const vs = items.filter((o) => o.tr === tr).map((o) => o.v);
+      if (vs.length) pv.set(tr, (Math.min(...vs) + Math.max(...vs)) / 2);
+    });
+    const pt = (Math.min(...ts) + Math.max(...ts)) / 2,
+      first = items[0],
+      ti = tracks.indexOf(first.tr);
+    modal = {
+      type,
+      x0: mouse.x,
+      y0: mouse.y,
+      axis: null,
+      items,
+      pt,
+      pv,
+      px: tx(pt),
+      py: vy(ti, first.tr, pv.get(first.tr)),
+    };
+  }
+  function modalApply() {
+    const m = modal,
+      dx = (mouse.x - m.x0) / pps,
+      dy = mouse.y - m.y0;
+    const f = clamp(
+      Math.hypot(mouse.x - m.px, mouse.y - m.py) /
+        Math.max(4, Math.hypot(m.x0 - m.px, m.y0 - m.py)),
+      0,
+      20,
+    );
+    m.items.forEach((o) => {
+      let t = o.t,
+        v = o.v,
+        hl = o.hl,
+        hr = o.hr;
+      if (m.type === "g") {
+        if (m.axis !== "y") t = st(o.t + dx);
+        if (m.axis !== "x") v = o.v - yv(o.tr, dy);
+      } else {
+        if (m.axis !== "y") {
+          t = clamp(m.pt + (o.t - m.pt) * f, 0, dur);
+          hl = [hl[0] * f, hl[1]];
+          hr = [hr[0] * f, hr[1]];
+        }
+        if (m.axis !== "x") {
+          const p = m.pv.get(o.tr);
+          v = p + (o.v - p) * f;
+          hl = [hl[0], hl[1] * f];
+          hr = [hr[0], hr[1] * f];
+        }
+      }
+      o.k.t = t;
+      o.k.v = clamp(v, o.tr.min, o.tr.max);
+      o.k.hl = hl;
+      o.k.hr = hr;
+    });
+    sortKeys();
+    draw();
+    updateHeads();
+  }
+  function cancelModal() {
+    modal.items.forEach((o) =>
+      Object.assign(o.k, { t: o.t, v: o.v, hl: o.hl, hr: o.hr }),
+    );
+    modal = null;
+    sortKeys();
+    draw();
+    updateHeads();
+  }
+  lanes.oncontextmenu = (e) => {
+    if (modal) {
+      e.preventDefault();
+      cancelModal();
+    }
+  };
+  const pick = (id) => {
+    const s = $(id);
+    s.focus();
+    try {
+      s.showPicker();
+    } catch (err) {}
+  }; // T and V open the menus
   lanes.ondblclick = (e) => {
     const { x, y } = pos(e),
       { i, tr, hit } = hitKey(x, y);
@@ -566,7 +832,7 @@
         tr.min,
         tr.max,
       ),
-      i: "linear",
+      i: "bezier",
     };
     tr.keys.push(k);
     sortKeys();
@@ -577,6 +843,7 @@
   };
   const onWheel = (e) => {
     e.preventDefault();
+    if (e.ctrlKey || e.metaKey) return setLane(LANE - e.deltaY * 0.3); // ctrl/⌘ + wheel (or pinch) resizes the lanes
     if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY))
       v0 = Math.max(0, v0 + (e.deltaX || e.deltaY) / pps);
     else {
@@ -599,6 +866,17 @@
   };
   window.onkeydown = (e) => {
     if (e.target.matches("input,select,textarea")) return;
+    if (modal) {
+      e.preventDefault();
+      if (e.key === "x" || e.key === "y") {
+        modal.axis = modal.axis === e.key ? null : e.key;
+        modalApply();
+      } else if (e.key === "Enter") {
+        modal = null;
+        draw();
+      } else if (e.key === "Escape") cancelModal();
+      return;
+    }
     if (e.code === "Space") {
       e.preventDefault();
       playing ? stop() : play();
@@ -609,7 +887,15 @@
       draw();
       updateHeads();
     } else if (e.key === "i") keyAll();
-    else if (e.code === "KeyA" && e.altKey) {
+    else if ((e.key === "g" || e.key === "s") && !e.metaKey && !e.ctrlKey)
+      startModal(e.key);
+    else if (e.key === "v") pick("handleType");
+    else if (e.key === "t") pick("interp");
+    else if (e.key === "Home") {
+      v0 = 0;
+      pps = (wrap.clientWidth - 40) / dur;
+      draw();
+    } else if (e.code === "KeyA" && e.altKey) {
       sel.clear();
       draw();
     } else if (e.code === "KeyA") {
@@ -641,6 +927,16 @@
     mark();
     sel.forEach((k) => (k.i = e.target.value));
     draw();
+    e.target.blur();
+  };
+  $("handleType").onchange = (e) => {
+    mark();
+    sel.forEach((k) => {
+      k.ht = e.target.value;
+      if (k.ht === "aligned") align(k, "hr", trackOf(k));
+    });
+    draw();
+    e.target.blur();
   };
   $("dur").onchange = (e) => {
     dur = Math.max(0.5, +e.target.value || 3);
@@ -666,7 +962,7 @@
     }
     e.target.value = "";
   };
-  ["loop", "snapOn", "scrubOn", "silenceOn"].forEach(
+  ["loop", "snapOn", "scrubOn", "silenceOn", "freeOn"].forEach(
     (id) => ($(id).onchange = persist),
   );
   let armed = 0;
@@ -694,9 +990,10 @@
     if (o?.tracks) {
       v0 = o.v0 > 0 ? o.v0 : 0;
       pps = o.pps > 0 ? o.pps : 0;
+      if (o.lane) setLane(o.lane);
       restore(o);
       head = clamp(o.head ?? 0, 0, dur);
-      for (const id of ["loop", "snapOn", "scrubOn", "silenceOn"])
+      for (const id of ["loop", "snapOn", "scrubOn", "silenceOn", "freeOn"])
         if (o.opts && id in o.opts) $(id).checked = o.opts[id];
     }
   } catch (err) {}

@@ -363,7 +363,49 @@
   }
 
   // Pitch: dragging a dot pins that block to a manual pitch; double-clicking it returns it to automatic.
-  let lastDot = { i: -1, t: 0 };
+  // Hear a dot while dragging it: hold that phoneme's main keyframe at the dragged pitch, then silence on release.
+  const PARAMS = [
+    "tongue.index",
+    "tongue.diameter",
+    "frontConstriction.index",
+    "frontConstriction.diameter",
+    "backConstriction.index",
+    "backConstriction.diameter",
+  ];
+  const sendLive = throttle(
+    (m) => send({ to: ["pink-trombone"], type: "message", ...m }),
+    30,
+  );
+  function hear(i, abs) {
+    if (!$("hearPitch").checked || !blocks[i]?.el.mainKeyframe) return;
+    const pose = {};
+    let tract = initialTractLength;
+    for (let j = 0; j <= i; j++) {
+      // carry earlier phonemes' settings forward, like consecutive keyframes do
+      const f = blocks[j].el.firstKeyframe?.(),
+        k = blocks[j].el.mainKeyframe?.();
+      if (f && "tractLength" in f) tract = f.tractLength;
+      if (k)
+        PARAMS.forEach((key) => {
+          if (key in k) pose[key] = k[key];
+        });
+    }
+    const k = blocks[i].el.mainKeyframe();
+    if (!k) return;
+    pose.intensity = k.intensity;
+    pose.tractLength = tract;
+    pose.frequency = initialFrequency * 2 ** (abs / 12);
+    pose.voiceness = isWhispering
+      ? 0
+      : phonemeSubstitutionType == "misc.slurring"
+        ? 0.8
+        : Math.acos(1 - (k.tenseness ?? 0.6)) / (Math.PI / 2);
+    sendLive(pose);
+  }
+  const silence = () =>
+    send({ to: ["pink-trombone"], type: "message", intensity: 0 });
+  let nudge,
+    lastDot = { i: -1, t: 0 };
   pitchLane.addEventListener("pointerdown", (e) => {
     const c = e.target.closest("circle");
     if (!c) return;
@@ -381,13 +423,17 @@
     }
     lastDot = { i, t: now };
     pitchLane.setPointerCapture(e.pointerId);
+    hear(i, abs0);
     const move = (ev) => {
-      if (Math.abs(ev.clientY - y0) > 2)
-        setManual(i, clamp(Math.round(abs0 - (ev.clientY - y0) / SC), -12, 12));
+      if (Math.abs(ev.clientY - y0) <= 2) return;
+      const v = clamp(Math.round(abs0 - (ev.clientY - y0) / SC), -12, 12);
+      setManual(i, v);
+      hear(i, v);
     };
     const up = () => {
       pitchLane.removeEventListener("pointermove", move);
       pitchLane.removeEventListener("pointerup", up);
+      silence();
     };
     pitchLane.addEventListener("pointermove", move);
     pitchLane.addEventListener("pointerup", up);
@@ -428,8 +474,13 @@
     } else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && b) {
       e.preventDefault();
       const d = e.key === "ArrowUp" ? 1 : -1;
-      if (e.shiftKey) setManual(selIdx, Math.round(targets[selIdx]) + d);
-      else
+      if (e.shiftKey) {
+        const v = Math.round(targets[selIdx]) + d;
+        setManual(selIdx, v);
+        hear(selIdx, v);
+        clearTimeout(nudge);
+        nudge = setTimeout(silence, 350);
+      } else
         setField(
           b.el,
           "intensity",
