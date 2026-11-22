@@ -10,6 +10,8 @@
     ["frontConstriction.diameter", -1, 5, 5, "#7fd1c7"],
     ["backConstriction.index", 10.5, 16, 10.5, "#8fb4ff"],
     ["backConstriction.diameter", -1, 5, 5, "#8fb4ff"],
+    ["lipConstriction.index", 38, 44, 44, "#ff9f6b"], // near the tip of the tract (lips start around 39)
+    ["lipConstriction.diameter", -1, 5, 5, "#ff9f6b"],
     ["voiceness", 0, 1, 0.8, "#ffd27a"],
     ["intensity", 0, 1, 0, "#ffd27a"],
     ["tractLength", 15, 88, 44, "#a8e08a"],
@@ -262,7 +264,12 @@
     const ignore =
       !$("liveOn").checked || playing || drag || now - lastSent < 250; // ignore echoes of our own scrubbing
     const edits = [];
-    for (const part of ["tongue", "frontConstriction", "backConstriction"]) {
+    for (const part of [
+      "tongue",
+      "frontConstriction",
+      "backConstriction",
+      "lipConstriction",
+    ]) {
       const c = m.constrictions[part];
       if (c) {
         const tl = byId.tractLength.on ? ev(byId.tractLength, head) / 44 : 1;
@@ -296,7 +303,12 @@
     capturing = false;
     mark();
     const tl = byId.tractLength.on ? ev(byId.tractLength, head) / 44 : 1; // host reports indices scaled by tract length
-    for (const part of ["tongue", "frontConstriction", "backConstriction"]) {
+    for (const part of [
+      "tongue",
+      "frontConstriction",
+      "backConstriction",
+      "lipConstriction",
+    ]) {
       const c = m.constrictions[part];
       if (c) {
         setKey(byId[part + ".index"], head, c.index / tl);
