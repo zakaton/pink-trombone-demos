@@ -869,6 +869,98 @@
   lanes.addEventListener("wheel", onWheel, { passive: false });
   ruler.addEventListener("wheel", onWheel, { passive: false });
 
+  // ---------- clean up selected keys, per track ----------
+  // Each track is handled on its own: a selected key is removed when the track's curve, redrawn without it (handles
+  // recomputed), stays within `tol` of the original curve. The least noticeable key goes first, always measured
+  // against the original curve so small errors can't add up. Unselected keys and each track's first and last key stay.
+  // --- cleanupTrack begin
+  function cleanupTrack(tr, tol) {
+    const ks = tr.keys;
+    if (ks.length < 3) return 0;
+    const first = ks[0],
+      last = ks[ks.length - 1],
+      t0 = first.t,
+      t1 = last.t;
+    const cand = new Set(
+      ks.filter((k) => sel.has(k) && k !== first && k !== last),
+    );
+    if (!cand.size || t1 <= t0) return 0;
+    const DT = Math.max(0.005, (t1 - t0) / 4000),
+      n = Math.ceil((t1 - t0) / DT),
+      tAt = (s) => Math.min(t1, t0 + s * DT);
+    const ref = Array.from({ length: n + 1 }, (_, s) => ev(tr, tAt(s)));
+    const cost = (k) => {
+      // worst deviation if k were removed, checked around the gap (neighbouring handles move too)
+      const i = ks.indexOf(k),
+        lo = ks[Math.max(0, i - 2)].t,
+        hi = ks[Math.min(ks.length - 1, i + 2)].t;
+      ks.splice(i, 1);
+      fixHandles(tr);
+      let err = 0;
+      for (
+        let s = Math.max(0, Math.floor((lo - t0) / DT));
+        s <= Math.min(n, Math.ceil((hi - t0) / DT));
+        s++
+      )
+        err = Math.max(err, Math.abs(ev(tr, tAt(s)) - ref[s]));
+      ks.splice(i, 0, k);
+      fixHandles(tr);
+      return err;
+    };
+    const err = new Map([...cand].map((k) => [k, cost(k)]));
+    let removed = 0;
+    for (;;) {
+      let best = null,
+        bestErr = tol;
+      for (const [k, e] of err)
+        if (e <= bestErr) {
+          bestErr = e;
+          best = k;
+        }
+      if (!best) break;
+      const i = ks.indexOf(best);
+      ks.splice(i, 1);
+      fixHandles(tr);
+      err.delete(best);
+      removed++;
+      for (const j of [i - 2, i - 1, i, i + 1]) {
+        const k = ks[j];
+        if (k && err.has(k)) err.set(k, cost(k));
+      } // only these windows changed
+    }
+    return removed;
+  }
+  // --- cleanupTrack end
+  let cleanMsg = 0;
+  function cleanupSelected() {
+    const b = $("clean"),
+      say = (text) => {
+        b.textContent = text;
+        clearTimeout(cleanMsg);
+        cleanMsg = setTimeout(
+          () => (b.textContent = "Clean up selected (C)"),
+          1800,
+        );
+      };
+    if (!sel.size || playing) return say("Select keys first");
+    mark();
+    const pct = Math.max(0, +$("cleanTol").value || 0) / 100;
+    let removed = 0;
+    tracks.forEach(
+      (tr) => (removed += cleanupTrack(tr, pct * (tr.max - tr.min))),
+    );
+    if (!removed) {
+      undo.pop();
+      return say("Nothing to remove");
+    }
+    [...sel].forEach((k) => {
+      if (!trackOf(k)) sel.delete(k);
+    });
+    draw();
+    updateHeads();
+    say(`Removed ${removed} key${removed == 1 ? "" : "s"}`);
+  }
+
   // ---------- keyboard + toolbar ----------
   const keyAll = () => {
     mark();
@@ -902,6 +994,7 @@
     else if ((e.key === "g" || e.key === "s") && !e.metaKey && !e.ctrlKey)
       startModal(e.key);
     else if (e.key === "v") pick("handleType");
+    else if (e.key === "c" && !e.metaKey && !e.ctrlKey) cleanupSelected();
     else if (e.key === "t") pick("interp");
     else if (e.key === "Home") {
       v0 = 0;
@@ -931,6 +1024,7 @@
     sel.clear();
     draw();
   };
+  $("clean").onclick = cleanupSelected;
   $("capture").onclick = () => {
     capturing = true;
     send(msg({ command: "getConstrictions" }));

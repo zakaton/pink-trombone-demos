@@ -151,6 +151,24 @@
       >
       <button id="selAll">Select all (A)</button>
       <button id="selNone">Select none</button>
+      <button
+        id="clean"
+        title="Remove selected keys the curve doesn't need, per parameter"
+      >
+        Clean up selected (C)
+      </button>
+      <label
+        >tolerance
+        <input
+          id="cleanTol"
+          type="number"
+          min="0"
+          step="0.1"
+          value="0.5"
+          style="width: 56px"
+        />
+        %</label
+      >
       <label
         >interpolation
         <select id="interp">
@@ -197,7 +215,9 @@
       and S scales the selection (X or Y to constrain, click or Enter confirms,
       Esc cancels), T and V pick interpolation and handle type, A selects all, I
       keys every track at the playhead, Space plays, Home fits the view, wheel
-      zooms, shift+wheel pans, Ctrl/⌘Z undoes.
+      zooms, shift+wheel pans, C cleans up the selected keys (each parameter on
+      its own; the tolerance is a percentage of that parameter's range), Ctrl/⌘Z
+      undoes.
     </p>
     <script src="./src/script.js"></script>
   </body>
