@@ -98,11 +98,20 @@ function tractLength() {
   return clamp(Math.round(+$("tract").value) || DEFAULT_TRACT, 15, 88);
 }
 
-/** Keyframes for the current articulation, simplified if that box is ticked. */
+// Pitch shift in semitones, applied to the frequency of everything sent to Pink Trombone or the timeline.
+const transposeRatio = () => 2 ** ((+$("transpose").value || 0) / 12);
+
+/** Keyframes for the current articulation, transposed, and simplified if that box is ticked. */
 function getKeyframes() {
   let keyframes = AK.articulationKeyframes(current.a, {
     tractLength: tractLength(),
   });
+  const ratio = transposeRatio();
+  if (ratio !== 1)
+    keyframes = keyframes.map((k) => ({
+      ...k,
+      frequency: k.frequency * ratio,
+    }));
   if ($("simplify").checked && AK.cleanupKeyframes) {
     const tolerance = Math.max(0, +$("tolerance").value || 0) / 100;
     keyframes = AK.cleanupKeyframes(keyframes, { tolerance });
@@ -660,6 +669,7 @@ function scrubTo(t, first = false) {
   const i = clamp(Math.round((t / model.dur) * (model.n - 1)), 0, model.n - 1);
   const { time, ...pose } = current.full[i]; // the full-rate keyframe for this frame: every parameter, as played
   pose.tractLength = tractLength();
+  pose.frequency *= transposeRatio();
   const message = first ? { ...pose, lastKeyframe: true } : pose; // lastKeyframe also cancels anything still playing
   clearTimeout(scrubTimer);
   const wait = 30 - (performance.now() - lastScrubSend);

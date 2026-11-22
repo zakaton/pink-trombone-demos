@@ -34,8 +34,11 @@
   const lanes = $("lanes"),
     ruler = $("ruler"),
     wrap = $("wrap");
-  const lx = lanes.getContext("2d"),
-    rx = ruler.getContext("2d");
+  const wave = $("wave"),
+    lx = lanes.getContext("2d"),
+    rx = ruler.getContext("2d"),
+    wx = wave.getContext("2d");
+  const WAVE_H = 56;
   let modal = null,
     mouse = { x: 0, y: 0 },
     dur = 3,
@@ -179,6 +182,9 @@
             scrubOn: $("scrubOn").checked,
             silenceOn: $("silenceOn").checked,
             freeOn: $("freeOn").checked,
+            mix: $("mix").value,
+            mixVol: $("mixVol").value,
+            audioOffset: $("audioOffset").value,
           },
         }),
       );
@@ -227,7 +233,7 @@
       if (!tr.keys.length) tr.keys.push({ t: 0, v: tr.def, i: "linear" });
       tr.on = true;
     });
-    dur = Math.max(0.5, ...kfs.map((k) => k.time ?? 0));
+    dur = Math.max(0.5, AB.buf?.duration || 0, ...kfs.map((k) => k.time ?? 0));
     $("dur").value = dur.toFixed(2);
     sortKeys();
     head = 0;
@@ -244,6 +250,295 @@
     a.click();
     URL.revokeObjectURL(a.href);
   }
+
+  // ---------- audio reference (file or microphone) with mixing ----------
+  const AB = {
+    buf: null,
+    mono: null,
+    name: "",
+    ctx: null,
+    gain: null,
+    src: null,
+    mn: null,
+    mx: null,
+    scale: 1,
+  };
+  const mixMode = () => $("mix").value;
+  const offsetS = () => (+$("audioOffset").value || 0) / 1000; // positive: the recording is later than the articulation
+  const audioCtx = () => {
+    if (!AB.ctx) {
+      AB.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      AB.gain = AB.ctx.createGain();
+      AB.gain.connect(AB.ctx.destination);
+    }
+    AB.gain.gain.value = +$("mixVol").value;
+    if (AB.ctx.state === "suspended") AB.ctx.resume();
+    return AB.ctx;
+  };
+  const wantsAudio = () => AB.buf && mixMode() !== "articulation";
+  function stopAudio() {
+    if (AB.src) {
+      try {
+        AB.src.onended = null;
+        AB.src.stop();
+      } catch (err) {}
+      AB.src = null;
+    }
+  }
+  function startAudio(from) {
+    stopAudio();
+    if (!wantsAudio()) return;
+    const c = audioCtx(),
+      rp = from - offsetS(),
+      s = c.createBufferSource();
+    s.buffer = AB.buf;
+    s.connect(AB.gain);
+    if (rp >= 0) {
+      if (rp >= AB.buf.duration) return;
+      s.start(0, rp);
+    } else s.start(c.currentTime - rp); // negative: wait for the recording to begin
+    AB.src = s;
+    s.onended = () => {
+      if (AB.src === s) AB.src = null;
+    };
+  }
+  // a short faded slice of the recording at time t, so dragging over the timeline can be heard
+  function grain(t) {
+    if (!wantsAudio()) return;
+    const c = audioCtx(),
+      rp = t - offsetS(),
+      d = 0.12,
+      f = 0.03;
+    if (rp < 0 || rp >= AB.buf.duration) return;
+    const s = c.createBufferSource(),
+      g = c.createGain(),
+      n = c.currentTime;
+    s.buffer = AB.buf;
+    s.connect(g);
+    g.connect(AB.gain);
+    g.gain.setValueAtTime(0, n);
+    g.gain.linearRampToValueAtTime(1, n + f);
+    g.gain.setValueAtTime(1, n + d - f);
+    g.gain.linearRampToValueAtTime(0, n + d);
+    s.start(n, rp, d);
+    s.stop(n + d + 0.01);
+  }
+  let grainTimer = 0,
+    lastGrain = 0;
+  const stopGrains = () => clearInterval(grainTimer);
+  function startGrains() {
+    // while the mouse is held on the ruler or waveform, keep repeating the grain at the playhead
+    stopGrains();
+    if (!wantsAudio() || !$("scrubOn").checked || playing) return;
+    grain(head);
+    grainTimer = setInterval(() => grain(head), 60);
+  }
+  function restartPlay() {
+    if (playing) {
+      const h = head;
+      stop();
+      head = h;
+      play();
+    }
+  }
+
+  // the recording survives a refresh in IndexedDB (too big for localStorage)
+  const idb = (fn) =>
+    new Promise((res) => {
+      try {
+        const r = indexedDB.open("pink-trombone-timeline-audio", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("a");
+        r.onerror = () => res();
+        r.onsuccess = () => {
+          try {
+            const t = r.result.transaction("a", "readwrite"),
+              q = fn(t.objectStore("a"));
+            t.oncomplete = () => res(q?.result);
+            t.onerror = t.onabort = () => res();
+          } catch (err) {
+            res();
+          }
+        };
+      } catch (err) {
+        res();
+      }
+    });
+  const storedAudio = {
+    save: (blob, name) => idb((s) => s.put({ blob, name }, "ref")),
+    load: () => idb((s) => s.get("ref")),
+    clear: () => idb((s) => s.delete("ref")),
+  };
+
+  function setAudio(buf, name) {
+    AB.buf = buf;
+    AB.name = name;
+    AB.mono = null;
+    AB.mn = AB.mx = null;
+    if (buf) {
+      const n = buf.length,
+        m = new Float32Array(n),
+        chs = Array.from({ length: buf.numberOfChannels }, (_, c) =>
+          buf.getChannelData(c),
+        );
+      let peak = 1e-4;
+      for (let i = 0; i < n; i++) {
+        let v = 0;
+        for (const c of chs) v += c[i];
+        v /= chs.length;
+        m[i] = v;
+        if (Math.abs(v) > peak) peak = Math.abs(v);
+      }
+      const B = 256,
+        nb = Math.ceil(n / B),
+        mn = new Float32Array(nb),
+        mx = new Float32Array(nb);
+      for (let b = 0; b < nb; b++) {
+        let lo = 1,
+          hi = -1;
+        for (let i = b * B, e = Math.min(n, i + B); i < e; i++) {
+          if (m[i] < lo) lo = m[i];
+          if (m[i] > hi) hi = m[i];
+        }
+        mn[b] = lo;
+        mx[b] = hi;
+      }
+      AB.mono = m;
+      AB.mn = mn;
+      AB.mx = mx;
+      AB.scale = 1 / peak;
+    }
+    $("waveRow").hidden = !buf;
+    $("mixCtl").hidden = !buf;
+    $("audName").textContent = buf
+      ? `${name} (${buf.duration.toFixed(1)} s)`
+      : "";
+    $("audName").title = name;
+    draw();
+  }
+  async function loadAudioBlob(blob, name, user = true) {
+    try {
+      const buf = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(
+        await blob.arrayBuffer(),
+      );
+      stop();
+      if (user) {
+        mark();
+        storedAudio.save(blob, name);
+        if (buf.duration > dur) {
+          dur = Math.ceil(buf.duration * 10) / 10;
+          $("dur").value = dur;
+        }
+      }
+      setAudio(buf, name);
+      if (user) {
+        v0 = 0;
+        pps = Math.max(20, (wrap.clientWidth - 40) / dur);
+      }
+      updateHeads();
+      draw();
+    } catch (err) {
+      if (user) alert("Couldn't use that audio: " + err.message);
+    }
+  }
+  function removeAudio() {
+    stop();
+    stopAudio();
+    storedAudio.clear();
+    setAudio(null, "");
+  }
+  $("audLoad").onclick = () => $("audFile").click();
+  $("audFile").onchange = (e) => {
+    const f = e.target.files[0];
+    if (f) loadAudioBlob(f, f.name);
+    e.target.value = "";
+  };
+  $("audRemove").onclick = removeAudio;
+  $("mix").onchange = () => {
+    persist();
+    restartPlay();
+    $("mix").blur();
+  };
+  $("audioOffset").onchange = () => {
+    persist();
+    restartPlay();
+    draw();
+  };
+  $("mixVol").oninput = () => {
+    if (AB.gain) AB.gain.gain.value = +$("mixVol").value;
+    persist();
+  };
+
+  // microphone: raw capture, so nothing gets muted or "improved"
+  async function listMics() {
+    try {
+      const list = (await navigator.mediaDevices.enumerateDevices()).filter(
+          (d) => d.kind === "audioinput",
+        ),
+        cur = $("micSel").value,
+        sel = $("micSel");
+      sel.textContent = "";
+      const add = (v, t) => {
+        const o = document.createElement("option");
+        o.value = v;
+        o.textContent = t;
+        sel.appendChild(o);
+      };
+      add("", "default microphone");
+      list.forEach((d, i) => {
+        if (d.deviceId && d.deviceId !== "default")
+          add(d.deviceId, d.label || "microphone " + (i + 1));
+      });
+      if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    } catch (err) {}
+  }
+  listMics();
+  let rec = null,
+    recTimer = 0;
+  async function startRec() {
+    stop();
+    stopGrains();
+    const audio = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      voiceIsolation: false,
+      channelCount: 1,
+    };
+    if ($("micSel").value) audio.deviceId = { exact: $("micSel").value };
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio });
+    } catch (err) {
+      return alert("Couldn't open the microphone: " + err.message);
+    }
+    listMics();
+    const chunks = [],
+      mr = new MediaRecorder(stream, { audioBitsPerSecond: 256000 }),
+      t0r = performance.now();
+    mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    mr.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      clearInterval(recTimer);
+      rec = null;
+      $("rec").textContent = "Record";
+      $("rec").classList.remove("on");
+      loadAudioBlob(
+        new Blob(chunks, { type: mr.mimeType }),
+        "recording " + new Date().toLocaleTimeString(),
+      );
+    };
+    mr.start();
+    rec = mr;
+    $("rec").classList.add("on");
+    const lab = () => {
+      const s = Math.floor((performance.now() - t0r) / 1000);
+      $("rec").textContent =
+        `Stop (${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")})`;
+    };
+    lab();
+    recTimer = setInterval(lab, 250);
+  }
+  $("rec").onclick = () => (rec ? rec.stop() : startRec());
 
   // ---------- Pink Trombone ----------
   const { send } = setupConnection("timeline", () => {});
@@ -350,13 +645,17 @@
   };
   function play() {
     if (head >= dur - 0.01) head = 0;
-    send(msg({ utterance: { name: "timeline", keyframes: build(head) } }));
+    if (mixMode() === "recording" && AB.buf)
+      send(msg({ lastKeyframe: true, intensity: 0 })); // recording only: keep the trombone quiet
+    else send(msg({ utterance: { name: "timeline", keyframes: build(head) } }));
+    startAudio(head);
     playing = true;
     t0 = performance.now() - head * 1000;
     $("play").textContent = "Stop";
     requestAnimationFrame(tick);
   }
   function stop() {
+    stopAudio();
     if (!playing) return;
     playing = false;
     $("play").textContent = "Play";
@@ -390,7 +689,14 @@
   }, 40);
   function setHead(t) {
     head = clamp(t, 0, dur);
-    if ($("scrubOn").checked && !playing) scrubSend();
+    if ($("scrubOn").checked && !playing) {
+      if (mixMode() !== "recording" || !AB.buf) scrubSend();
+      const now = performance.now();
+      if (!drag?.scrub && now - lastGrain >= 60) {
+        lastGrain = now;
+        grain(head);
+      } // arrow keys and clicks; a held scrub repeats grains itself
+    }
     updateHeads();
     draw();
   }
@@ -526,6 +832,7 @@
       lx.restore();
     });
     const hx = Math.round(tx(head)) + 0.5;
+    if (AB.buf) drawWave(W, hx);
     lx.strokeStyle = "#ff6b9a";
     lx.lineWidth = 1;
     lx.beginPath();
@@ -554,18 +861,67 @@
     rx.lineTo(hx, 27);
     rx.fill();
   }
+  function drawWave(W, hx) {
+    wx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    wx.clearRect(0, 0, W, WAVE_H);
+    wx.fillStyle = "#1d1824";
+    wx.fillRect(0, 0, W, WAVE_H);
+    const sr = AB.buf.sampleRate,
+      n = AB.mono.length,
+      off = offsetS(),
+      mid = WAVE_H / 2,
+      amp = (mid - 3) * AB.scale,
+      B = 256;
+    wx.strokeStyle = "#6fb7d9";
+    wx.lineWidth = 1;
+    wx.beginPath();
+    for (let x = 0; x < W; x++) {
+      const a0 = (xt(x) - off) * sr,
+        a1 = (xt(x + 1) - off) * sr;
+      if (a1 < 0 || a0 >= n) continue;
+      const lo = Math.max(0, Math.floor(a0)),
+        hi = Math.min(n, Math.max(lo + 1, Math.ceil(a1)));
+      let mn = 1,
+        mx = -1;
+      if (hi - lo >= B * 2) {
+        for (
+          let b = Math.floor(lo / B), e = Math.floor((hi - 1) / B);
+          b <= e;
+          b++
+        ) {
+          if (AB.mn[b] < mn) mn = AB.mn[b];
+          if (AB.mx[b] > mx) mx = AB.mx[b];
+        }
+      } else
+        for (let i = lo; i < hi; i++) {
+          const v = AB.mono[i];
+          if (v < mn) mn = v;
+          if (v > mx) mx = v;
+        }
+      wx.moveTo(x + 0.5, mid - mx * amp);
+      wx.lineTo(x + 0.5, Math.max(mid - mx * amp + 1, mid - mn * amp));
+    }
+    wx.stroke();
+    wx.strokeStyle = "#ff6b9a";
+    wx.beginPath();
+    wx.moveTo(hx, 0);
+    wx.lineTo(hx, WAVE_H);
+    wx.stroke();
+  }
   function resize() {
     const W = wrap.clientWidth;
     dpr = devicePixelRatio || 1;
     [
       [lanes, tracks.length * LANE],
       [ruler, 28],
+      [wave, WAVE_H],
     ].forEach(([c, h]) => {
       c.width = W * dpr;
       c.height = h * dpr;
       c.style.height = h + "px";
     });
     ruler.style.width = W + "px";
+    wave.style.width = W + "px";
     if (!pps) pps = (W - 40) / dur;
     draw();
   }
@@ -662,10 +1018,13 @@
     }
     draw();
   };
-  ruler.onmousedown = (e) => {
+  const scrubDown = (e) => {
     drag = { scrub: true };
     setHead(xt(pos(e).x));
+    startGrains();
   };
+  ruler.onmousedown = scrubDown;
+  wave.onmousedown = scrubDown;
   window.onmousemove = (e) => {
     if (!drag) return;
     const { x, y } = pos(e);
@@ -703,6 +1062,7 @@
     updateHeads();
   };
   window.onmouseup = () => {
+    stopGrains();
     const clicked = drag?.box && !drag.moved;
     if (clicked) setHead(xt(drag.x)); // plain click on empty space moves the playhead
     if (drag?.scrub || clicked) silence();
@@ -868,6 +1228,7 @@
   };
   lanes.addEventListener("wheel", onWheel, { passive: false });
   ruler.addEventListener("wheel", onWheel, { passive: false });
+  wave.addEventListener("wheel", onWheel, { passive: false });
 
   // ---------- clean up selected keys, per track ----------
   // Each track is handled on its own: a selected key is removed when the track's curve, redrawn without it (handles
@@ -1089,7 +1450,7 @@
     try {
       localStorage.removeItem(STORE);
     } catch (err) {}
-    location.reload();
+    storedAudio.clear().then(() => location.reload());
   };
   try {
     const o = JSON.parse(localStorage.getItem(STORE));
@@ -1101,6 +1462,8 @@
       head = clamp(o.head ?? 0, 0, dur);
       for (const id of ["loop", "snapOn", "scrubOn", "silenceOn", "freeOn"])
         if (o.opts && id in o.opts) $(id).checked = o.opts[id];
+      for (const id of ["mix", "mixVol", "audioOffset"])
+        if (o.opts?.[id] != null) $(id).value = o.opts[id];
     }
   } catch (err) {}
   // Hand-off from the TTS page: over a BroadcastChannel if this page is open, or from the localStorage inbox if it opened us.
@@ -1130,5 +1493,8 @@
       localStorage.removeItem("timeline-inbox");
     }
   } catch (err) {}
+  storedAudio.load().then((r) => {
+    if (r?.blob && !AB.buf) loadAudioBlob(r.blob, r.name, false);
+  });
   updateHeads();
 })();

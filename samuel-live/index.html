@@ -162,6 +162,26 @@
             Trombone</label
           >
           <label
+            title="stop sending while the microphone is quiet, so silence and room noise don't move Pink Trombone"
+            ><input type="checkbox" id="gateOn" checked /> only during
+            speech</label
+          >
+          <label
+            >threshold
+            <input
+              type="range"
+              id="gate"
+              min="-70"
+              max="-20"
+              step="1"
+              value="-42"
+            />
+            <span id="gateVal" style="display: inline-block; min-width: 52px"
+              >-42 dB</span
+            ></label
+          >
+          <b id="speechState" style="min-width: 60px; color: var(--mute)"></b>
+          <label
             >transpose
             <input type="number" id="transpose" value="0" step="1" />
             semitones</label
@@ -202,7 +222,10 @@
           length scales the tongue, constriction and lip positions with it, so
           the same sounds are made in a longer or shorter tract. The graphs show
           the last few seconds of what Samuel is hearing, as the parameters it
-          sends.
+          sends. While the microphone level is below the threshold (the dashed
+          line on the input level graph) nothing is sent, and Pink Trombone is
+          silenced; set the threshold just above your room noise, and the green
+          shading shows when speech is detected.
         </p>
       </section>
     </main>
