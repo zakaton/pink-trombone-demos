@@ -726,6 +726,9 @@ const createResultContainer = () => {
           }
         }
         _keyframe.tractLength = tractLength;
+        // Phonemes don't use the lips, so every keyframe holds the lip constriction wide open (diameter 5). That resets
+        // it after anything that had moved it (the timeline, Samuel, scrubbing), for playback, download and send to timeline.
+        _keyframe["lipConstriction.diameter"] ??= 5;
         delete _keyframe.timeDelta;
         _keyframes.push(_keyframe);
       }
