@@ -729,3 +729,134 @@ document.addEventListener("mouseup", () => {
     node._value = undefined;
   });
 });
+
+// Record the output of Pink Trombone: the signal is tapped right after the vocal tract (before the speakers), so it holds
+// exactly what is played, and nothing from the room. It is saved losslessly as a 16-bit WAV file when you stop.
+const recordOutputButton = document.getElementById("recordOutput");
+const recorderWorkletSource = `
+class OutputRecorder extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (input && input.length) this.port.postMessage(input.map((channel) => channel.slice()));
+    return true;
+  }
+}
+registerProcessor("pink-trombone-output-recorder", OutputRecorder);`;
+let outputRecorder; // { node, chunks, started, timer }
+let recorderModuleLoaded = false;
+
+const encodeWav = (channels, sampleRate) => {
+  const numChannels = channels.length;
+  const length = channels[0].length;
+  const buffer = new ArrayBuffer(44 + length * numChannels * 2);
+  const view = new DataView(buffer);
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++)
+      view.setUint8(offset + i, string.charCodeAt(i));
+  };
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + length * numChannels * 2, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, length * numChannels * 2, true);
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    for (let c = 0; c < numChannels; c++) {
+      const sample = Math.max(-1, Math.min(1, channels[c][i]));
+      view.setInt16(
+        offset,
+        sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+        true,
+      );
+      offset += 2;
+    }
+  }
+  return new Blob([buffer], { type: "audio/wav" });
+};
+
+const formatRecordingTime = (milliseconds) => {
+  const seconds = Math.floor(milliseconds / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+};
+
+const startOutputRecording = async () => {
+  if (outputRecorder || !frequencyNode) return; // frequencyNode is set once Pink Trombone has loaded
+  if (audioContext.state != "running") await audioContext.resume();
+  if (!recorderModuleLoaded) {
+    const url = URL.createObjectURL(
+      new Blob([recorderWorkletSource], { type: "text/javascript" }),
+    );
+    await audioContext.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+    recorderModuleLoaded = true;
+  }
+  const node = new AudioWorkletNode(
+    audioContext,
+    "pink-trombone-output-recorder",
+    {
+      numberOfInputs: 1,
+      numberOfOutputs: 0,
+    },
+  );
+  const chunks = [];
+  node.port.onmessage = (event) => chunks.push(event.data);
+  pinkTromboneElement.pinkTrombone._pinkTromboneNode.connect(node);
+  const started = performance.now();
+  const timer = setInterval(() => {
+    recordOutputButton.innerText = `stop recording (${formatRecordingTime(performance.now() - started)})`;
+  }, 250);
+  outputRecorder = { node, chunks, started, timer };
+  recordOutputButton.innerText = "stop recording (0:00)";
+  recordOutputButton.style.background = "#ff8a8a";
+};
+
+const stopOutputRecording = () => {
+  if (!outputRecorder) return;
+  const { node, chunks, timer } = outputRecorder;
+  outputRecorder = undefined;
+  clearInterval(timer);
+  pinkTromboneElement.pinkTrombone._pinkTromboneNode.disconnect(node);
+  node.port.onmessage = null;
+  node.disconnect();
+  recordOutputButton.innerText = "record";
+  recordOutputButton.style.background = "";
+  if (!chunks.length) return;
+
+  const numChannels = Math.min(2, chunks[0].length);
+  const total = chunks.reduce((sum, chunk) => sum + chunk[0].length, 0);
+  const channels = Array.from(
+    { length: numChannels },
+    () => new Float32Array(total),
+  );
+  let offset = 0;
+  chunks.forEach((chunk) => {
+    channels.forEach((channel, c) => channel.set(chunk[c] ?? chunk[0], offset));
+    offset += chunk[0].length;
+  });
+
+  const url = URL.createObjectURL(encodeWav(channels, audioContext.sampleRate));
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+  a.href = url;
+  a.download = `pink-trombone-${stamp}.wav`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+};
+
+recordOutputButton.addEventListener("click", async () => {
+  try {
+    if (outputRecorder) stopOutputRecording();
+    else await startOutputRecording();
+  } catch (error) {
+    console.error("couldn't record the output", error);
+    recordOutputButton.innerText = "record";
+  }
+});
