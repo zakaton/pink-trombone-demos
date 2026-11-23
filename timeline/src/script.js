@@ -238,6 +238,7 @@
             silenceOn: $("silenceOn").checked,
             freeOn: $("freeOn").checked,
             pitchSnap: $("pitchSnap").checked,
+            avatarOn: $("avatarOn").checked,
             mix: $("mix").value,
             mixVol: $("mixVol").value,
             audioOffset: $("audioOffset").value,
@@ -609,7 +610,14 @@
 
   // ---------- Pink Trombone ----------
   const { send } = setupConnection("timeline", () => {});
-  const msg = (o) => ({ to: ["pink-trombone"], type: "message", ...o });
+  const msg = (o) => ({
+    to: [
+      "pink-trombone",
+      ...($("avatarOn").checked ? ["samuel-morphtargets"] : []),
+    ],
+    type: "message",
+    ...o,
+  }); // the avatar page follows the same messages
   // Pink Trombone replies to getConstrictions with a "to" list that excludes us, so listen to the raw channel.
   let lastV,
     lastLive = 0,
@@ -1517,7 +1525,11 @@
   $("clean").onclick = cleanupSelected;
   $("capture").onclick = () => {
     capturing = true;
-    send(msg({ command: "getConstrictions" }));
+    send({
+      to: ["pink-trombone"],
+      type: "message",
+      command: "getConstrictions",
+    });
   };
   $("interp").onchange = (e) => {
     mark();
@@ -1558,9 +1570,15 @@
     }
     e.target.value = "";
   };
-  ["loop", "snapOn", "scrubOn", "silenceOn", "freeOn", "pitchSnap"].forEach(
-    (id) => ($(id).onchange = persist),
-  );
+  [
+    "loop",
+    "snapOn",
+    "scrubOn",
+    "silenceOn",
+    "freeOn",
+    "pitchSnap",
+    "avatarOn",
+  ].forEach((id) => ($(id).onchange = persist));
   let armed = 0;
   $("reset").onclick = () => {
     const b = $("reset");
@@ -1596,6 +1614,7 @@
         "silenceOn",
         "freeOn",
         "pitchSnap",
+        "avatarOn",
       ])
         if (o.opts && id in o.opts) $(id).checked = o.opts[id];
       for (const id of ["mix", "mixVol", "audioOffset"])

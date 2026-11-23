@@ -313,7 +313,9 @@ function renderMaps() {
       deleteMap(map);
     });
     row.append(dot, name, play, del, bar);
-    row.addEventListener("click", () => selectMap(map.id, true));
+    row.addEventListener("click", () =>
+      map.id === selectedId ? deselectMap() : selectMap(map.id, true),
+    ); // clicking the selected map unselects it
     box.append(row);
   }
   if (!config.maps.length) {
@@ -330,6 +332,14 @@ function selectMap(id, hear) {
   const map = selected();
   if (map && !testing) applyPose(map.targets);
   if (map && hear) playMapSound(map);
+  refreshButtons();
+}
+/** No map selected: the editor closes, and whenever the avatar isn't being driven it shows the neutral face. */
+function deselectMap() {
+  selectedId = null;
+  renderMaps();
+  renderEditor();
+  if (!testing) applyPose({});
   refreshButtons();
 }
 function addMap() {
@@ -354,6 +364,17 @@ function deleteMap(map) {
   changed();
 }
 $("mapAdd").addEventListener("click", addMap);
+$("mapUnselect").addEventListener("click", deselectMap);
+window.addEventListener("keydown", (e) => {
+  if (
+    e.key === "Escape" &&
+    selectedId &&
+    !e.target.matches?.("select,textarea")
+  ) {
+    if (e.target.blur) e.target.blur();
+    deselectMap();
+  }
+});
 armed($("mapDel"), "Delete", () => {
   const m = selected();
   if (m) deleteMap(m);
@@ -448,7 +469,9 @@ function renderAll() {
 }
 
 // ---------------------------------------------------------------- Pink Trombone
-const { send } = setupConnection("samuel-morphtargets", () => {});
+const { send } = setupConnection("samuel-morphtargets", (message) =>
+  onRemote(message),
+);
 const toPT = (message) =>
   send({ to: ["pink-trombone"], type: "message", ...message });
 function frameMessage(p) {
@@ -858,5 +881,142 @@ function refreshButtons() {
   $("useFrame").disabled = !selected() || cursor < 0 || recording;
 }
 refreshButtons();
+
+// ---------------------------------------------------------------- follow /timeline and /tts-timeline
+// They send the same messages they send to Pink Trombone (a pose, or an utterance of keyframes) with this page added to the
+// recipients. Only the tongue, front constriction, lip and intensity matter here; indices are always on the 44-long tract
+// scale (Pink Trombone rescales them by its tract length), which is the scale the maps were captured on.
+const REMOTE_KEYS = {
+  "tongue.index": "tongueIndex",
+  "tongue.diameter": "tongueDiameter",
+  "frontConstriction.index": "constrictionIndex",
+  "frontConstriction.diameter": "constrictionDiameter",
+  "lipConstriction.diameter": "lipDiameter",
+  intensity: "intensity",
+};
+const follow = {
+  cur: {
+    tongueIndex: 12.9,
+    tongueDiameter: 2.43,
+    constrictionIndex: 43,
+    constrictionDiameter: 5,
+    lipDiameter: 5,
+    intensity: 0,
+  },
+  playback: null,
+  raf: 0,
+  lastMessage: 0,
+};
+try {
+  const saved = localStorage.getItem("samuel-morphtargets-follow");
+  if (saved !== null) $("follow").checked = saved === "1";
+} catch {}
+$("follow").addEventListener("change", () => {
+  try {
+    localStorage.setItem(
+      "samuel-morphtargets-follow",
+      $("follow").checked ? "1" : "0",
+    );
+  } catch {}
+});
+
+const pick = (source) => {
+  // the numbers this page uses from a pose or a keyframe
+  const out = {};
+  for (const [key, name] of Object.entries(REMOTE_KEYS)) {
+    const v = Number(source[key]);
+    if (source[key] != null && Number.isFinite(v)) out[name] = v;
+  }
+  return out;
+};
+function onRemote(message) {
+  if (!message || !$("follow").checked || testing || recording) return;
+  const { utterance, lastKeyframe } = message;
+  const frames =
+    utterance &&
+    typeof utterance === "object" &&
+    Array.isArray(utterance.keyframes)
+      ? utterance.keyframes
+          .filter((k) => k && Number.isFinite(Number(k.time)))
+          .map((k) => ({ time: Number(k.time), ...pick(k) }))
+          .sort((a, b) => a.time - b.time)
+      : [];
+  if (frames.length) {
+    if (lastKeyframe) {
+      Object.assign(
+        follow.cur,
+        ...frames.slice(-1).map(({ time, ...rest }) => rest),
+      );
+      follow.playback = null;
+    } // "just the final pose"
+    else
+      follow.playback = {
+        frames,
+        start: performance.now(),
+        from: { ...follow.cur },
+      };
+  } else {
+    if (lastKeyframe) follow.playback = null; // Pink Trombone stops what it was playing
+    Object.assign(follow.cur, pick(message)); // a pose: scrubbing, holding a pitch, silence
+  }
+  wakeFollower();
+}
+/** The value of one parameter t seconds into an utterance: a straight line from keyframe to keyframe, as Pink Trombone ramps it. */
+function sampleKeyframes(p, name, t) {
+  let prev = { time: 0, v: p.from[name] };
+  for (const f of p.frames) {
+    if (f[name] === undefined) continue;
+    if (t <= f.time)
+      return f.time > prev.time
+        ? prev.v + (f[name] - prev.v) * ((t - prev.time) / (f.time - prev.time))
+        : f[name];
+    prev = { time: f.time, v: f[name] };
+  }
+  return prev.v; // after the last keyframe the value is held
+}
+const influenceOf = (name) => {
+  for (const m of morphMeshes) {
+    const i = m.morphTargetDictionary[name];
+    if (i !== undefined) return m.morphTargetInfluences[i];
+  }
+  return 0;
+};
+function wakeFollower() {
+  follow.lastMessage = performance.now();
+  if (follow.raf) return;
+  for (const n of config.targets) smoothed[n] = influenceOf(n); // start from whatever the face shows now
+  follow.raf = requestAnimationFrame(followFrame);
+}
+function followFrame(now) {
+  follow.raf = 0;
+  if (testing || recording || !$("follow").checked) return;
+  const p = follow.playback;
+  if (p) {
+    const t = (now - p.start) / 1000;
+    for (const name of Object.values(REMOTE_KEYS))
+      follow.cur[name] = sampleKeyframes(p, name, t);
+    if (t > p.frames[p.frames.length - 1].time) follow.playback = null; // finished: the last values stay in follow.cur
+  }
+  const sounding = follow.cur.intensity >= 0.05; // while Pink Trombone is silent the face relaxes to neutral
+  const result = sounding ? blend(follow.cur, config.maps, settings()) : null,
+    target = result?.values ?? {},
+    k = 1 - settings().smoothing;
+  for (const name of config.targets) {
+    smoothed[name] =
+      (smoothed[name] ?? 0) + ((target[name] ?? 0) - (smoothed[name] ?? 0)) * k;
+    setInfluence(name, smoothed[name]);
+  }
+  for (const [id, bar] of bars)
+    bar.style.width = `${Math.round((result?.weights.get(id) ?? 0) * 100)}%`;
+  $("followState").textContent = sounding ? "following" : "quiet";
+  if (follow.playback || now - follow.lastMessage < 1500)
+    follow.raf = requestAnimationFrame(followFrame);
+  else {
+    // nothing for a while: show the selected map again, as in the editor
+    for (const bar of bars.values()) bar.style.width = "0";
+    $("followState").textContent = "";
+    applyPose(selected()?.targets ?? {});
+  }
+}
 
 initConfig();

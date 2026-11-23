@@ -373,7 +373,7 @@
     "backConstriction.diameter",
   ];
   const sendLive = throttle(
-    (m) => send({ to: ["pink-trombone"], type: "message", ...m }),
+    (m) => send({ to: recipients("pink-trombone"), type: "message", ...m }),
     30,
   );
   function hear(i, abs) {
@@ -403,7 +403,7 @@
     sendLive(pose);
   }
   const silence = () =>
-    send({ to: ["pink-trombone"], type: "message", intensity: 0 });
+    send({ to: recipients("pink-trombone"), type: "message", intensity: 0 });
   let nudge,
     lastDot = { i: -1, t: 0 };
   pitchLane.addEventListener("pointerdown", (e) => {

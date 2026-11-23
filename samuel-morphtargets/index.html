@@ -297,7 +297,10 @@
         <h2>Maps</h2>
         <div class="row">
           <button id="mapAdd" class="primary">Add map</button
-          ><span class="mute">click a map to hear it and see it</span>
+          ><span class="mute"
+            >click a map to hear and see it; click it again (or press Esc) to
+            unselect</span
+          >
         </div>
         <div id="maps"></div>
       </section>
@@ -308,6 +311,12 @@
           <input id="mapName" style="flex: 1; min-width: 100px" />
           <button id="mapPlay" title="play its sound on Pink Trombone">
             ▶ sound
+          </button>
+          <button
+            id="mapUnselect"
+            title="unselect: the avatar returns to neutral when nothing is driving it"
+          >
+            Unselect
           </button>
           <button id="mapDup">Duplicate</button>
           <button id="mapDel">Delete</button>
@@ -349,6 +358,24 @@
             Use this frame as the selected map's input
           </button>
         </div>
+      </section>
+
+      <section class="card">
+        <h2>Follow /timeline and /tts-timeline</h2>
+        <div class="row">
+          <label
+            ><input type="checkbox" id="follow" checked /> the avatar follows
+            what they send</label
+          >
+          <b id="followState" class="mute"></b>
+        </div>
+        <p class="hint">
+          With "also drive avatar" ticked on those pages, whatever they play on
+          Pink Trombone (scrubbing, playing, hearing a pitch) also moves the
+          face here: the tongue, front constriction and lip they send are
+          blended through your maps, like test mode does. When Pink Trombone is
+          silent, the face relaxes to neutral.
+        </p>
       </section>
 
       <section class="card">
