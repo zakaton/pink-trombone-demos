@@ -1,6 +1,15 @@
 // Live chat: microphone -> Samuel.liveMimic -> simplified keys -> PeerJS -> partner's Pink Trombone.
 // Only articulation data crosses the network. Your own voice never plays on your own Pink Trombone.
-import { CHANNELS, Encoder, Playout, pack } from "./stream.js";
+import {
+  CHANNELS,
+  Encoder,
+  Playout,
+  pack,
+  encodePacket,
+  decodePacket,
+  asBytes,
+  toWire,
+} from "./stream.js";
 
 // Samuel's files are shared with the /samuel page; change this if yours live somewhere else.
 const SAMUEL_SRC = new URL("../../samuel/src/", import.meta.url);
@@ -491,10 +500,11 @@ function frameTime() {
 function flush() {
   if (!pending.length) return;
   if (connOpen()) {
-    const packet = pack(pending, performance.now());
+    const packet = pack(pending, performance.now()),
+      bytes = encodePacket(packet); // lossless binary: the same keys in far fewer bytes
     try {
-      conn.send(packet);
-      tx.bytes += JSON.stringify(packet).length;
+      conn.send(toWire(bytes));
+      tx.bytes += bytes.length;
       tx.keys += packet.k.length;
     } catch (e) {
       console.warn(e);
@@ -545,9 +555,11 @@ let tickWorker = null,
   rx = { keys: 0, bytes: 0, since: performance.now() },
   lastLoud = 0;
 function onPacket(data) {
-  const n = playout.receive(data, performance.now());
-  rx.keys += n;
-  rx.bytes += JSON.stringify(data).length;
+  const bytes = asBytes(data),
+    packet = bytes && decodePacket(bytes);
+  if (!packet) return;
+  rx.keys += playout.receive(packet, performance.now());
+  rx.bytes += bytes.length;
 }
 function startPlayback() {
   endPlayback();
