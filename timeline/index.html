@@ -171,6 +171,11 @@
       >
       <label><input type="checkbox" id="snapOn" /> snap to 0.05s</label>
       <label
+        title="dragging or grabbing pitch keys moves them by whole semitones"
+        ><input type="checkbox" id="pitchSnap" checked /> snap pitch to
+        semitones</label
+      >
+      <label
         ><input type="checkbox" id="scrubOn" checked /> hear scrubbing</label
       >
       <label
@@ -299,9 +304,14 @@
       keys every track at the playhead, Space plays, Home fits the view, wheel
       zooms, shift+wheel pans, C cleans up the selected keys (each parameter on
       its own; the tolerance is a percentage of that parameter's range), Ctrl/⌘Z
-      undoes. Load or record an audio reference to see its waveform above the
-      lanes: scrub it, choose which to hear (articulation, recording or both)
-      and nudge the sync offset until they line up.
+      undoes. The pitch lane is in semitones: keys move by whole semitones
+      (untick the box for free movement), the pitch row shows the same value
+      twice, as a note such as C#3 (with cents when it is off the note) and as a
+      frequency in Hz, both updating live; type into either one (the note box
+      also takes 220 Hz or a MIDI note number). Load or record an audio
+      reference to see its waveform above the lanes: scrub it, choose which to
+      hear (articulation, recording or both) and nudge the sync offset until
+      they line up.
     </p>
     <script src="./src/script.js"></script>
   </body>

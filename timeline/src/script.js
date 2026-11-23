@@ -1,9 +1,55 @@
 (() => {
+  // ---------- pitch: the frequency track is stored in semitones (MIDI note numbers, A4 = 69 = 440 Hz) ----------
+  const hzToMidi = (hz) => 69 + 12 * Math.log2(Math.max(hz, 1) / 440);
+  const midiToHz = (m) => 440 * 2 ** ((m - 69) / 12);
+  const NOTES = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+  ];
+  const noteName = (n) =>
+    NOTES[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+  function noteLabel(m) {
+    // e.g. "C#3", or "C#3 +12¢" when it is off the note
+    const n = Math.round(m),
+      cents = Math.round((m - n) * 100);
+    return noteName(n) + (cents ? ` ${cents > 0 ? "+" : ""}${cents}¢` : "");
+  }
+  // "C#3", "Db4 +20", "220 Hz", or a plain number taken as a MIDI note; NaN if it can't be read
+  function parsePitch(text) {
+    const t = text.trim(),
+      note = t.match(
+        /^([a-g])\s*([#b♯♭]?)\s*(-?\d+)?\s*(?:([+-]\s*\d+(?:\.\d+)?)\s*(?:c|¢|cents?)?)?$/i,
+      );
+    if (note) {
+      const base = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[
+          note[1].toLowerCase()
+        ],
+        acc = note[2] === "#" || note[2] === "♯" ? 1 : note[2] ? -1 : 0;
+      return (
+        12 * ((note[3] == null ? 3 : +note[3]) + 1) +
+        base +
+        acc +
+        (note[4] ? +note[4].replace(/\s/g, "") / 100 : 0)
+      );
+    }
+    const hz = t.match(/^(\d+(?:\.\d+)?)\s*hz$/i);
+    return hz ? hzToMidi(+hz[1]) : t === "" ? NaN : Number(t);
+  }
   let LANE = 96; // lane height in px, adjustable
   const PAD = 7;
   // id, min, max, default, color
   const defs = [
-    ["frequency", 20, 600, 140, "#c9a7ff"],
+    ["frequency", 28, 80, hzToMidi(140), "#c9a7ff"], // semitones: E1 (41 Hz) to G#5 (831 Hz)
     ["tongue.index", 12, 29, 12.9, "#f4a7c0"],
     ["tongue.diameter", 2.05, 3.5, 2.43, "#f4a7c0"],
     ["frontConstriction.index", 28, 44, 43, "#7fd1c7"],
@@ -24,12 +70,20 @@
     color,
     on: true,
     keys: [],
-    label: id
-      .replace("Constriction", " constriction")
-      .replace(".", " ")
-      .replace("tractLength", "tract length"),
+    midi: id === "frequency", // values are semitones, sent to Pink Trombone as Hz
+    label:
+      id === "frequency"
+        ? "pitch"
+        : id
+            .replace("Constriction", " constriction")
+            .replace(".", " ")
+            .replace("tractLength", "tract length"),
   }));
   const byId = Object.fromEntries(tracks.map((t) => [t.id, t]));
+  const outValue = (tr, v) => (tr.midi ? midiToHz(v) : v); // what Pink Trombone is sent
+  // with "snap pitch to semitones", a move of a pitch key is rounded to whole semitones (other tracks are untouched)
+  const snapShift = (tr, d) =>
+    tr.midi && $("pitchSnap").checked ? Math.round(d) : d;
   const $ = (id) => document.getElementById(id);
   const lanes = $("lanes"),
     ruler = $("ruler"),
@@ -155,6 +209,7 @@
   // ---------- undo / save ----------
   const serialize = () => ({
     dur,
+    freqUnit: "midi",
     tracks: Object.fromEntries(
       tracks.map((t) => [
         t.id,
@@ -182,6 +237,7 @@
             scrubOn: $("scrubOn").checked,
             silenceOn: $("silenceOn").checked,
             freeOn: $("freeOn").checked,
+            pitchSnap: $("pitchSnap").checked,
             mix: $("mix").value,
             mixVol: $("mixVol").value,
             audioOffset: $("audioOffset").value,
@@ -200,15 +256,25 @@
     undo.push(JSON.stringify(serialize()));
     if (undo.length > 50) undo.shift();
   };
+  function hzKeysToSemitones(tr) {
+    tr.keys.forEach((k) => {
+      const hz = k.v,
+        m = hzToMidi(hz);
+      k.v = clamp(m, tr.min, tr.max);
+      ["hl", "hr"].forEach((side) => {
+        if (k[side]) k[side] = [k[side][0], hzToMidi(hz + k[side][1]) - m];
+      }); // handle heights, hz -> semitones
+    });
+  }
   function restore(o) {
     dur = o.dur;
     $("dur").value = dur;
     tracks.forEach((t) => {
       const s = o.tracks?.[t.id];
-      if (s) {
-        t.on = s.on;
-        t.keys = s.keys.map((k) => ({ ...k }));
-      }
+      if (!s) return;
+      t.on = s.on;
+      t.keys = s.keys.map((k) => ({ ...k }));
+      if (t.midi && o.freqUnit !== "midi") hzKeysToSemitones(t); // projects saved before pitch was in semitones held Hz
     });
     sortKeys();
     sel.clear();
@@ -223,6 +289,7 @@
         let v = kf[tr.id];
         if (tr.id === "voiceness" && kf.tenseness != null)
           v = Math.acos(1 - kf.tenseness) / (Math.PI / 2);
+        if (tr.midi && v != null) v = hzToMidi(v);
         if (v != null && isFinite(v))
           tr.keys.push({
             t: kf.time ?? 0,
@@ -626,7 +693,7 @@
         T.add(r(k.t));
         if (!n) return;
         if (k.i === "step") T.add(r(n.t - 0.001));
-        else if (k.i === "bezier" || tr.id === "voiceness")
+        else if (k.i === "bezier" || tr.id === "voiceness" || tr.midi)
           for (let s = k.t + 0.02; s < n.t; s += 0.02) T.add(r(s));
       }),
     );
@@ -638,7 +705,7 @@
         on.forEach((tr) => {
           const v = ev(tr, t);
           if (tr.id === "voiceness") Object.assign(kf, deconstructVoiceness(v));
-          else kf[tr.id] = v;
+          else kf[tr.id] = outValue(tr, v);
         });
         return kf;
       });
@@ -683,7 +750,9 @@
   };
   const scrubSend = throttle(() => {
     const m = {};
-    tracks.filter((t) => t.on).forEach((tr) => (m[tr.id] = ev(tr, head)));
+    tracks
+      .filter((t) => t.on)
+      .forEach((tr) => (m[tr.id] = outValue(tr, ev(tr, head))));
     lastSent = performance.now();
     send(msg(m));
   }, 40);
@@ -721,10 +790,37 @@
       tr.on = cb.checked;
       draw();
     };
+    if (tr.midi) {
+      // two boxes for the same value: the note, and the frequency in Hz (both follow the playhead and the keys live)
+      num.type = "text";
+      num.style.width = "74px";
+      num.title =
+        "pitch: type a note (C#3, Db4 +20), a frequency (220 Hz) or a MIDI note number";
+      const hz = document.createElement("input");
+      hz.type = "number";
+      hz.step = "any";
+      hz.min = 1;
+      hz.style.width = "58px";
+      hz.title = "frequency in Hz";
+      hz.onchange = () => {
+        const v = hzToMidi(+hz.value);
+        if (+hz.value > 0) {
+          mark();
+          setKey(tr, head, v);
+          draw();
+        }
+        updateHeads();
+      };
+      d.appendChild(hz);
+      tr.hz = hz;
+    }
     num.onchange = () => {
-      mark();
-      setKey(tr, head, +num.value);
-      draw();
+      const v = tr.midi ? parsePitch(num.value) : +num.value;
+      if (Number.isFinite(v)) {
+        mark();
+        setKey(tr, head, v);
+        draw();
+      }
       updateHeads();
     };
     tr.cb = cb;
@@ -734,8 +830,13 @@
   function updateHeads() {
     $("readout").textContent = `${head.toFixed(2)} / ${dur.toFixed(2)} s`;
     tracks.forEach((tr) => {
-      if (document.activeElement !== tr.num)
-        tr.num.value = +ev(tr, head).toFixed(2);
+      const v = ev(tr, head);
+      if (tr.midi) {
+        if (document.activeElement !== tr.num) tr.num.value = noteLabel(v);
+        if (document.activeElement !== tr.hz)
+          tr.hz.value = +midiToHz(v).toFixed(1);
+      } else if (document.activeElement !== tr.num)
+        tr.num.value = +v.toFixed(2);
     });
   }
   function syncHeads() {
@@ -790,6 +891,29 @@
       lx.rect(0, i * LANE, W, LANE);
       lx.clip();
       lx.globalAlpha = tr.on ? 1 : 0.3;
+      if (tr.midi) {
+        // a line per semitone (brighter at each C), labelled with the note names
+        const per = (LANE - 2 * PAD) / (tr.max - tr.min);
+        lx.font = "10px system-ui";
+        for (let n = Math.ceil(tr.min); n <= tr.max; n++) {
+          const isC = n % 12 === 0,
+            y = Math.round(vy(i, tr, n)) + 0.5;
+          if (per < 4 && !isC) continue;
+          lx.strokeStyle = isC
+            ? "rgba(201,167,255,.28)"
+            : "rgba(201,167,255,.09)";
+          lx.beginPath();
+          lx.moveTo(0, y);
+          lx.lineTo(W, y);
+          lx.stroke();
+          if (isC || per >= 12) {
+            lx.fillStyle = isC
+              ? "rgba(201,167,255,.9)"
+              : "rgba(155,143,168,.7)";
+            lx.fillText(noteName(n), 3, y - 2);
+          }
+        }
+      }
       lx.strokeStyle = tr.color;
       lx.lineWidth = 1.5;
       lx.beginPath();
@@ -1055,7 +1179,11 @@
     const dt = (x - drag.x) / pps;
     drag.orig.forEach((o) => {
       o.k.t = st(o.t + dt);
-      o.k.v = clamp(o.v - yv(o.tr, y - drag.y), o.tr.min, o.tr.max);
+      o.k.v = clamp(
+        o.v + snapShift(o.tr, -yv(o.tr, y - drag.y)),
+        o.tr.min,
+        o.tr.max,
+      );
     });
     sortKeys();
     draw();
@@ -1146,7 +1274,7 @@
         hr = o.hr;
       if (m.type === "g") {
         if (m.axis !== "y") t = st(o.t + dx);
-        if (m.axis !== "x") v = o.v - yv(o.tr, dy);
+        if (m.axis !== "x") v = o.v + snapShift(o.tr, -yv(o.tr, dy));
       } else {
         if (m.axis !== "y") {
           t = clamp(m.pt + (o.t - m.pt) * f, 0, dur);
@@ -1196,11 +1324,12 @@
       { i, tr, hit } = hitKey(x, y);
     if (!tr || hit) return;
     mark();
+    const raw =
+      tr.min + ((vy(i, tr, tr.min) - y) / (LANE - 2 * PAD)) * (tr.max - tr.min);
     const k = {
       t: st(xt(x)),
       v: clamp(
-        tr.min +
-          ((vy(i, tr, tr.min) - y) / (LANE - 2 * PAD)) * (tr.max - tr.min),
+        tr.midi && $("pitchSnap").checked ? Math.round(raw) : raw,
         tr.min,
         tr.max,
       ),
@@ -1429,7 +1558,7 @@
     }
     e.target.value = "";
   };
-  ["loop", "snapOn", "scrubOn", "silenceOn", "freeOn"].forEach(
+  ["loop", "snapOn", "scrubOn", "silenceOn", "freeOn", "pitchSnap"].forEach(
     (id) => ($(id).onchange = persist),
   );
   let armed = 0;
@@ -1460,7 +1589,14 @@
       if (o.lane) setLane(o.lane);
       restore(o);
       head = clamp(o.head ?? 0, 0, dur);
-      for (const id of ["loop", "snapOn", "scrubOn", "silenceOn", "freeOn"])
+      for (const id of [
+        "loop",
+        "snapOn",
+        "scrubOn",
+        "silenceOn",
+        "freeOn",
+        "pitchSnap",
+      ])
         if (o.opts && id in o.opts) $(id).checked = o.opts[id];
       for (const id of ["mix", "mixVol", "audioOffset"])
         if (o.opts?.[id] != null) $(id).value = o.opts[id];
