@@ -3,56 +3,279 @@
     <title>Samuel phonemes</title>
     <script src="../src/utils.js"></script>
     <style>
-      :root{--bg:#17131c;--card:#211b29;--ink:#e9e1ee;--mute:#9b8fa8;--line:#352c41;--hot:#ff6b9a}
-      *{box-sizing:border-box}
-      [hidden]{display:none !important}
-      body{margin:0;background:var(--bg);color:var(--ink);font:13px "Avenir Next","Segoe UI",system-ui,sans-serif}
-      a{color:var(--mute)}
-      header{display:flex;align-items:baseline;gap:14px;padding:14px 20px 4px;flex-wrap:wrap}
-      h1{margin:0;font-size:20px}
-      h2{margin:0 0 8px;font-size:14px}
-      main{display:grid;grid-template-columns:minmax(360px,1fr) minmax(360px,1fr);gap:12px;padding:8px 20px 30px;max-width:1300px;margin:0 auto;align-items:start}
-      @media (max-width:860px){main{grid-template-columns:1fr}}
-      .col{display:flex;flex-direction:column;gap:12px;min-width:0}
-      .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
-      .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
-      .row + .row,.row + div,div + .row{margin-top:8px}
-      select,input,button{font:inherit;color:var(--ink);background:#2b2335;border:1px solid #43385a;border-radius:6px;padding:4px 8px}
-      input[type=checkbox]{padding:0}
-      input[type=range]{padding:0;accent-color:var(--hot)}
-      button{cursor:pointer}button:hover:not(:disabled){border-color:var(--hot)}button:disabled{opacity:.4;cursor:default}
-      .primary{background:var(--hot);border-color:var(--hot);color:#2a0f1a;font-weight:600}
-      .on{background:#c0392b !important;border-color:#c0392b !important;color:#fff !important}
-      .mute,.hint{color:var(--mute)}
-      .hint{font-size:12px;margin:8px 0 0}
-      .err{color:#ff8a8a}
-      .ipa{font-family:"Charis SIL","Doulos SIL","Noto Sans","Segoe UI",system-ui,sans-serif}
-      .map{display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid transparent;border-radius:6px;cursor:pointer}
-      .map:hover{background:#2b2335}
-      .map.sel{border-color:var(--hot);background:#2b2335}
-      .map .dot{width:9px;height:9px;border-radius:50%;background:#554a66;flex:none}
-      .map .dot.ok{background:#8fe3a0}
-      .map .sym{font-size:17px;min-width:34px}
-      .map .name{flex:1;color:var(--mute);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-      .map .best{color:var(--hot);font-variant-numeric:tabular-nums}
-      .map button{padding:0 6px;line-height:20px}
-      #maps{max-height:260px;overflow-y:auto;margin-top:8px}
-      #inputInfo{font-variant-numeric:tabular-nums}
-      #cap{width:100%;height:120px;display:block;margin-top:8px;border-radius:6px;background:#1d1824;cursor:ew-resize}
-      #big{font-size:110px;line-height:1.1;text-align:center;min-height:130px;display:flex;align-items:center;justify-content:center}
-      #big.dim{color:#554a66}
-      #bigInfo{text-align:center;color:var(--mute);font-variant-numeric:tabular-nums;min-height:18px}
-      .cand{display:grid;grid-template-columns:42px 1fr 52px;align-items:center;gap:8px;margin:3px 0;font-variant-numeric:tabular-nums}
-      .cand .sym{font-size:18px}
-      .cand .track{height:10px;background:#2b2335;border-radius:5px;overflow:hidden}
-      .cand .fill{height:100%;background:var(--hot);width:0}
-      .cand.top .fill{background:#8fe3a0}
-      #transcript{display:flex;flex-wrap:wrap;gap:4px;min-height:34px;max-height:180px;overflow-y:auto;margin-top:6px}
-      .chip{padding:2px 8px;border-radius:12px;background:#2b2335;border:1px solid #43385a;font-size:16px}
-      .chip small{color:var(--mute);font-size:10px;margin-left:4px}
-      .chip.q{color:#ff8a8a}
-      .set{display:grid;grid-template-columns:150px 1fr 56px;align-items:center;gap:6px}
-      .set b{font-weight:400;color:var(--mute);font-variant-numeric:tabular-nums}
+      :root {
+        --bg: #17131c;
+        --card: #211b29;
+        --ink: #e9e1ee;
+        --mute: #9b8fa8;
+        --line: #352c41;
+        --hot: #ff6b9a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          13px "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+      }
+      a {
+        color: var(--mute);
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        padding: 14px 20px 4px;
+        flex-wrap: wrap;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+        gap: 12px;
+        padding: 8px 20px 30px;
+        max-width: 1300px;
+        margin: 0 auto;
+        align-items: start;
+      }
+      @media (max-width: 860px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+      }
+      .row + .row,
+      .row + div,
+      div + .row {
+        margin-top: 8px;
+      }
+      select,
+      input,
+      button {
+        font: inherit;
+        color: var(--ink);
+        background: #2b2335;
+        border: 1px solid #43385a;
+        border-radius: 6px;
+        padding: 4px 8px;
+      }
+      input[type="checkbox"] {
+        padding: 0;
+      }
+      input[type="range"] {
+        padding: 0;
+        accent-color: var(--hot);
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--hot);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .primary {
+        background: var(--hot);
+        border-color: var(--hot);
+        color: #2a0f1a;
+        font-weight: 600;
+      }
+      .on {
+        background: #c0392b !important;
+        border-color: #c0392b !important;
+        color: #fff !important;
+      }
+      .mute,
+      .hint {
+        color: var(--mute);
+      }
+      .hint {
+        font-size: 12px;
+        margin: 8px 0 0;
+      }
+      .err {
+        color: #ff8a8a;
+      }
+      .ipa {
+        font-family:
+          "Charis SIL", "Doulos SIL", "Noto Sans", "Segoe UI", system-ui,
+          sans-serif;
+      }
+      .map {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .map:hover {
+        background: #2b2335;
+      }
+      .map.sel {
+        border-color: var(--hot);
+        background: #2b2335;
+      }
+      .map .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #554a66;
+        flex: none;
+      }
+      .map .dot.ok {
+        background: #8fe3a0;
+      }
+      .map .sym {
+        font-size: 17px;
+        min-width: 34px;
+      }
+      .map .name {
+        flex: 1;
+        color: var(--mute);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .map .best {
+        color: var(--hot);
+        font-variant-numeric: tabular-nums;
+      }
+      .map button {
+        padding: 0 6px;
+        line-height: 20px;
+      }
+      #maps {
+        max-height: 260px;
+        overflow-y: auto;
+        margin-top: 8px;
+      }
+      #inputInfo {
+        font-variant-numeric: tabular-nums;
+      }
+      #cap {
+        width: 100%;
+        height: 120px;
+        display: block;
+        margin-top: 8px;
+        border-radius: 6px;
+        background: #1d1824;
+        cursor: ew-resize;
+      }
+      #big {
+        font-size: 110px;
+        line-height: 1.1;
+        text-align: center;
+        min-height: 130px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #big.dim {
+        color: #554a66;
+      }
+      #bigInfo {
+        text-align: center;
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+        min-height: 18px;
+      }
+      .cand {
+        display: grid;
+        grid-template-columns: 42px 1fr 52px;
+        align-items: center;
+        gap: 8px;
+        margin: 3px 0;
+        font-variant-numeric: tabular-nums;
+      }
+      .cand .sym {
+        font-size: 18px;
+      }
+      .cand .track {
+        height: 10px;
+        background: #2b2335;
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .cand .fill {
+        height: 100%;
+        background: var(--hot);
+        width: 0;
+      }
+      .cand.top .fill {
+        background: #8fe3a0;
+      }
+      #transcript {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-height: 34px;
+        max-height: 180px;
+        overflow-y: auto;
+        margin-top: 6px;
+      }
+      .chip {
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: #2b2335;
+        border: 1px solid #43385a;
+        font-size: 16px;
+      }
+      .chip small {
+        color: var(--mute);
+        font-size: 10px;
+        margin-left: 4px;
+      }
+      .chip.q {
+        color: #ff8a8a;
+      }
+      .set {
+        display: grid;
+        grid-template-columns: 150px 1fr 56px;
+        align-items: center;
+        gap: 6px;
+      }
+      .set b {
+        font-weight: 400;
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+      }
     </style>
   </head>
   <body>
@@ -66,11 +289,27 @@
         <section class="card">
           <h2>Configuration</h2>
           <div class="row">
-            <input id="cfgName" placeholder="configuration name" style="flex: 1; min-width: 120px" />
-            <button id="cfgExport" title="download the configuration as JSON">Export</button>
-            <button id="cfgLoad" title="replace the configuration with a JSON file">Load…</button>
+            <input
+              id="cfgName"
+              placeholder="configuration name"
+              style="flex: 1; min-width: 120px"
+            />
+            <button id="cfgExport" title="download the configuration as JSON">
+              Export
+            </button>
+            <button
+              id="cfgLoad"
+              title="replace the configuration with a JSON file"
+            >
+              Load…
+            </button>
             <button id="cfgNew">New</button>
-            <input id="cfgFile" type="file" accept=".json,application/json" hidden />
+            <input
+              id="cfgFile"
+              type="file"
+              accept=".json,application/json"
+              hidden
+            />
           </div>
           <p id="cfgInfo" class="hint"></p>
         </section>
@@ -78,7 +317,11 @@
         <section class="card">
           <h2>Maps</h2>
           <div class="row">
-            <select id="phonemePick" class="ipa" title="the phoneme this map stands for"></select>
+            <select
+              id="phonemePick"
+              class="ipa"
+              title="the phoneme this map stands for"
+            ></select>
             <button id="mapAdd" class="primary">Add map</button>
             <span class="mute">a phoneme can have several maps</span>
           </div>
@@ -88,9 +331,19 @@
         <section class="card" id="editor" hidden>
           <h2>Selected map</h2>
           <div class="row">
-            <label>phoneme <select id="mapPhoneme" class="ipa"></select></label>
-            <button id="mapPlay" title="play the captured frame">▶ captured</button>
-            <button id="mapPlayPhoneme" title="play Pink Trombone's own version of this phoneme">▶ phoneme</button>
+            <label
+              >phoneme
+              <select id="mapPhoneme" class="ipa"></select
+            ></label>
+            <button id="mapPlay" title="play the captured frame">
+              ▶ captured
+            </button>
+            <button
+              id="mapPlayPhoneme"
+              title="play Pink Trombone's own version of this phoneme"
+            >
+              ▶ phoneme
+            </button>
             <button id="mapUnselect">Unselect</button>
             <button id="mapDup">Duplicate</button>
             <button id="mapDel">Delete</button>
@@ -101,15 +354,36 @@
         <section class="card">
           <h2>Capture the input from your voice</h2>
           <div class="row">
-            <select id="mic" title="microphone"><option value="">default microphone</option></select>
+            <select id="mic" title="microphone">
+              <option value="">default microphone</option>
+            </select>
             <button id="rec" disabled>record</button>
-            <label><input type="checkbox" id="hear" checked /> hear the frame on Pink Trombone</label>
+            <label
+              ><input type="checkbox" id="hear" checked /> hear the frame on
+              Pink Trombone</label
+            >
           </div>
           <canvas id="cap"></canvas>
-          <div class="row"><span id="frameInfo" class="mute" style="font-variant-numeric: tabular-nums">Select a map, record yourself saying that sound, then click or drag over the graph (or use ← →) to pick one frame.</span></div>
           <div class="row">
-            <button id="useFrame" disabled>Use this frame as the selected map's input</button>
-            <button id="classifyRec" disabled title="run the whole recording through the recogniser">Recognise the recording</button>
+            <span
+              id="frameInfo"
+              class="mute"
+              style="font-variant-numeric: tabular-nums"
+              >Select a map, record yourself saying that sound, then click or
+              drag over the graph (or use ← →) to pick one frame.</span
+            >
+          </div>
+          <div class="row">
+            <button id="useFrame" disabled>
+              Use this frame as the selected map's input
+            </button>
+            <button
+              id="classifyRec"
+              disabled
+              title="run the whole recording through the recogniser"
+            >
+              Recognise the recording
+            </button>
           </div>
         </section>
       </div>
@@ -119,8 +393,35 @@
           <h2>Closest phoneme</h2>
           <div class="row">
             <button id="test" class="primary" disabled>start test mode</button>
-            <label title="play each recognised phoneme on Pink Trombone (wear headphones)"><input type="checkbox" id="testSound" /> play it on Pink Trombone</label>
+            <label
+              title="play each recognised phoneme on Pink Trombone (wear headphones)"
+              ><input type="checkbox" id="testSound" /> play it on Pink
+              Trombone</label
+            >
             <b id="testState" class="mute"></b>
+          </div>
+          <canvas
+            id="meter"
+            style="
+              width: 100%;
+              height: 52px;
+              display: block;
+              border-radius: 6px;
+              background: rgba(255, 255, 255, 0.04);
+            "
+            title="microphone level: the dashed line is the threshold, green shading is detected speech"
+          ></canvas>
+          <div class="row">
+            <label title="off: every frame counts, however quiet"
+              ><input type="checkbox" id="gateOn" checked /> only during
+              speech</label
+            >
+          </div>
+          <div class="set">
+            <span>loudness threshold</span
+            ><input id="sGate" type="range" min="-70" max="-20" step="1" /><b
+              id="vGate"
+            ></b>
           </div>
           <div id="big" class="ipa dim">–</div>
           <div id="bigInfo"></div>
@@ -128,28 +429,93 @@
         </section>
 
         <section class="card">
-          <h2>Transcript <span id="transcriptSource" class="mute" style="font-weight: 400"></span></h2>
-          <div class="row"><b id="transcriptText" class="ipa" style="font-size: 17px"></b></div>
+          <h2>
+            Transcript
+            <span
+              id="transcriptSource"
+              class="mute"
+              style="font-weight: 400"
+            ></span>
+          </h2>
+          <div class="row">
+            <b id="transcriptText" class="ipa" style="font-size: 17px"></b>
+          </div>
           <div id="transcript"></div>
-          <div class="row"><button id="tClear">Clear</button><button id="tCopy">Copy IPA</button></div>
+          <div class="row">
+            <button id="tClear">Clear</button
+            ><button id="tCopy">Copy IPA</button>
+          </div>
         </section>
 
         <section class="card">
           <h2>Recogniser settings</h2>
-          <div class="set"><span>tongue weight</span><input id="sTongue" type="range" min="0" max="3" step="0.1" /><b id="vTongue"></b></div>
-          <div class="set"><span>front constriction weight</span><input id="sFront" type="range" min="0" max="3" step="0.1" /><b id="vFront"></b></div>
-          <div class="set"><span>lip weight</span><input id="sLip" type="range" min="0" max="3" step="0.1" /><b id="vLip"></b></div>
-          <div class="set"><span>voiceness weight</span><input id="sVoice" type="range" min="0" max="3" step="0.1" /><b id="vVoice"></b></div>
-          <div class="set"><span>smoothing</span><input id="sSmoothing" type="range" min="0" max="0.9" step="0.05" /><b id="vSmoothing"></b></div>
-          <div class="set"><span>stability (frames)</span><input id="sStability" type="range" min="1" max="12" step="1" /><b id="vStability"></b></div>
-          <div class="set"><span>max distance</span><input id="sMaxDistance" type="range" min="0.05" max="2" step="0.05" /><b id="vMaxDistance"></b></div>
-          <div class="set"><span>confidence sharpness</span><input id="sSharpness" type="range" min="0.5" max="6" step="0.5" /><b id="vSharpness"></b></div>
-          <div class="set"><span>speech threshold</span><input id="sGate" type="range" min="-70" max="-20" step="1" /><b id="vGate"></b></div>
+          <div class="set">
+            <span>tongue weight</span
+            ><input id="sTongue" type="range" min="0" max="3" step="0.1" /><b
+              id="vTongue"
+            ></b>
+          </div>
+          <div class="set">
+            <span>front constriction weight</span
+            ><input id="sFront" type="range" min="0" max="3" step="0.1" /><b
+              id="vFront"
+            ></b>
+          </div>
+          <div class="set">
+            <span>lip weight</span
+            ><input id="sLip" type="range" min="0" max="3" step="0.1" /><b
+              id="vLip"
+            ></b>
+          </div>
+          <div class="set">
+            <span>voiceness weight</span
+            ><input id="sVoice" type="range" min="0" max="3" step="0.1" /><b
+              id="vVoice"
+            ></b>
+          </div>
+          <div class="set">
+            <span>smoothing</span
+            ><input
+              id="sSmoothing"
+              type="range"
+              min="0"
+              max="0.9"
+              step="0.05"
+            /><b id="vSmoothing"></b>
+          </div>
+          <div class="set">
+            <span>stability (frames)</span
+            ><input id="sStability" type="range" min="1" max="12" step="1" /><b
+              id="vStability"
+            ></b>
+          </div>
+          <div class="set">
+            <span>max distance</span
+            ><input
+              id="sMaxDistance"
+              type="range"
+              min="0.05"
+              max="2"
+              step="0.05"
+            /><b id="vMaxDistance"></b>
+          </div>
+          <div class="set">
+            <span>confidence sharpness</span
+            ><input
+              id="sSharpness"
+              type="range"
+              min="0.5"
+              max="6"
+              step="0.5"
+            /><b id="vSharpness"></b>
+          </div>
           <p class="hint">
-            Each value is normalised by its range and weighted by these sliders, and the closest map wins. Smoothing averages
-            neighbouring frames, and a new phoneme is only accepted once it has won for the number of stability frames
-            (about 12 ms each), which stops flicker. If even the closest map is further than the max distance, the result
-            is "?". Settings are saved in the configuration.
+            Each value is normalised by its range and weighted by these sliders,
+            and the closest map wins. Smoothing averages neighbouring frames,
+            and a new phoneme is only accepted once it has won for the number of
+            stability frames (about 12 ms each), which stops flicker. If even
+            the closest map is further than the max distance, the result is "?".
+            Settings are saved in the configuration.
           </p>
         </section>
       </div>

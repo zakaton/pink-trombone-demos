@@ -389,6 +389,29 @@
           >
           <b id="testState" class="mute"></b>
         </div>
+        <canvas
+          id="meter"
+          style="
+            width: 100%;
+            height: 52px;
+            display: block;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.04);
+          "
+          title="microphone level: the dashed line is the threshold, green shading is detected speech"
+        ></canvas>
+        <div class="row">
+          <label title="off: every frame counts, however quiet"
+            ><input type="checkbox" id="gateOn" checked /> only during
+            speech</label
+          >
+        </div>
+        <div class="set">
+          <span>loudness threshold</span
+          ><input id="sGate" type="range" min="-70" max="-20" step="1" /><b
+            id="vGate"
+          ></b>
+        </div>
         <div class="set">
           <span>nearest maps blended</span
           ><input id="sNeighbours" type="range" min="1" max="12" step="1" /><b
@@ -428,12 +451,6 @@
             max="0.95"
             step="0.05"
           /><b id="vSmoothing"></b>
-        </div>
-        <div class="set">
-          <span>speech threshold</span
-          ><input id="sGate" type="range" min="-70" max="-20" step="1" /><b
-            id="vGate"
-          ></b>
         </div>
         <p class="hint">
           In test mode your voice drives the avatar: each live frame is compared

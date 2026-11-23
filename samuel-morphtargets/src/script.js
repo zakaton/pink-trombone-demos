@@ -658,6 +658,17 @@ function drawCapture() {
     capCtx.stroke();
   }
   capCtx.globalAlpha = 1;
+  if (gateEnabled()) {
+    const ty = H - 4 - levelLine(gateRms()) * (H - 8);
+    capCtx.setLineDash([4, 4]);
+    capCtx.strokeStyle = "#ffd27a";
+    capCtx.lineWidth = 1;
+    capCtx.beginPath();
+    capCtx.moveTo(0, ty + 0.5);
+    capCtx.lineTo(W, ty + 0.5);
+    capCtx.stroke();
+    capCtx.setLineDash([]);
+  }
   if (cursor >= 0) {
     capCtx.strokeStyle = "#fff";
     capCtx.lineWidth = 1.5;
@@ -723,6 +734,7 @@ async function toggleRecord() {
   $("frameInfo").textContent = "recording… make the sound, then stop";
   const ok = await startMic((frame) => {
     const p = frame.params;
+    pushMeter(frame.level, frame.level >= gateRms());
     frames.push({
       ...Object.fromEntries(INPUT_KEYS.map((k) => [k, p[k]])),
       lipDiameter: p.lipDiameter ?? OPEN_LIP,
@@ -784,7 +796,8 @@ const smoothed = {}; // current value of every target in use
 const HANGOVER_FRAMES = Math.round(0.2 * FRAME_RATE);
 function updateGate(level) {
   // the same level gate as /samuel-live: opens at the threshold, closes 200 ms after it drops below 70% of it
-  const open = 10 ** (settings().gate / 20);
+  if (!gateEnabled()) return (gateOpen = true);
+  const open = gateRms();
   if (level >= (gateOpen ? open * 0.7 : open)) {
     quietFrames = 0;
     gateOpen = true;
@@ -793,8 +806,12 @@ function updateGate(level) {
 }
 function onTestFrame(frame) {
   const wasOpen = gateOpen,
-    speech = updateGate(frame.level),
-    p = { ...frame.params, lipDiameter: frame.params.lipDiameter ?? OPEN_LIP };
+    speech = updateGate(frame.level);
+  pushMeter(frame.level, speech);
+  const p = {
+    ...frame.params,
+    lipDiameter: frame.params.lipDiameter ?? OPEN_LIP,
+  };
   const result = speech ? blend(p, config.maps, settings()) : null,
     target = result?.values ?? {},
     k = 1 - settings().smoothing;
@@ -869,6 +886,83 @@ for (const [key, [input, label, fmt]] of Object.entries(SETTING_UI)) {
     changed();
   });
 }
+
+// ---------------------------------------------------------------- loudness threshold + level meter (as in /samuel-live)
+const meter = $("meter"),
+  meterCtx = meter.getContext("2d"),
+  MN = 300,
+  mLevel = new Float32Array(MN),
+  mOpen = new Uint8Array(MN);
+let mHead = 0,
+  mCount = 0,
+  mDirty = true;
+const gateRms = () => 10 ** (settings().gate / 20); // the slider is in dB relative to full scale
+const gateEnabled = () => $("gateOn").checked;
+try {
+  $("gateOn").checked = localStorage.getItem("samuel-gate-on") !== "0";
+} catch {}
+$("gateOn").addEventListener("change", () => {
+  try {
+    localStorage.setItem("samuel-gate-on", $("gateOn").checked ? "1" : "0");
+  } catch {}
+  mDirty = true;
+  drawCapture();
+});
+function pushMeter(level, open) {
+  mLevel[mHead] = level;
+  mOpen[mHead] = open ? 1 : 0;
+  mHead = (mHead + 1) % MN;
+  mCount = Math.min(MN, mCount + 1);
+  mDirty = true;
+}
+function drawMeter() {
+  requestAnimationFrame(drawMeter);
+  if (!mDirty) return;
+  mDirty = false;
+  const W = meter.clientWidth,
+    H = meter.clientHeight,
+    dpr = window.devicePixelRatio || 1;
+  if (!W) return;
+  if (meter.width !== W * dpr) {
+    meter.width = W * dpr;
+    meter.height = H * dpr;
+  }
+  meterCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  meterCtx.clearRect(0, 0, W, H);
+  const at = (k) => (mHead - mCount + k + MN) % MN,
+    x = (k) => ((MN - mCount + k) / (MN - 1)) * (W - 1),
+    y = (rms) => H - 3 - Math.min(1, Math.sqrt(rms) * 2.5) * (H - 6);
+  meterCtx.fillStyle = "rgba(143,227,160,.18)";
+  for (let k = 0; k < mCount; k++)
+    if (mOpen[at(k)]) meterCtx.fillRect(x(k), 0, Math.max(1, W / MN), H); // shaded where speech is detected
+  meterCtx.beginPath();
+  for (let k = 0; k < mCount; k++)
+    k
+      ? meterCtx.lineTo(x(k), y(mLevel[at(k)]))
+      : meterCtx.moveTo(x(k), y(mLevel[at(k)]));
+  meterCtx.strokeStyle = "#9b8fa8";
+  meterCtx.lineWidth = 1.4;
+  meterCtx.stroke();
+  if (gateEnabled()) {
+    // the dashed line is the threshold
+    meterCtx.setLineDash([5, 4]);
+    meterCtx.strokeStyle = "#ffd27a";
+    meterCtx.lineWidth = 1;
+    meterCtx.beginPath();
+    meterCtx.moveTo(0, y(gateRms()) + 0.5);
+    meterCtx.lineTo(W, y(gateRms()) + 0.5);
+    meterCtx.stroke();
+    meterCtx.setLineDash([]);
+  }
+}
+new ResizeObserver(() => {
+  mDirty = true;
+}).observe(meter);
+$("sGate").addEventListener("input", () => {
+  mDirty = true;
+  drawCapture();
+});
+drawMeter();
 
 function refreshButtons() {
   const ready =
