@@ -852,3 +852,13 @@ pigLatinCheckbox.addEventListener("input", (event) => {
   //console.log("isUsingPigLatin", isUsingPigLatin);
   onResultsUpdate();
 });
+
+// Enter in the text or phonemes box plays everything (Shift+Enter still adds a line break, and Enter while an input method
+// is composing text is left alone). The box has already laid out the result, because that happens as you type.
+[textInput, phonemesInput].forEach((box) =>
+  box.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    if (!playButton.disabled) playButton.click(); // the button's own handlers also start the playhead
+  }),
+);
