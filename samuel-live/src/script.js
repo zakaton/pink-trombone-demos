@@ -114,6 +114,40 @@ function frameMessage(p) {
   });
 }
 
+// ---------------------------------------------------------------- speech detection
+// Frames are only sent while there is speech: the microphone level (RMS of the hop) must reach the threshold to open the
+// gate, and fall below 70% of it for a short while to close it, so quiet moments inside a word don't chop it up.
+// Frames carry no "speech" flag of their own, and a pitch-based test would miss unvoiced sounds such as "s" and "f".
+const HANGOVER_FRAMES = Math.round(0.2 * (44100 / 512)); // keep sending for 200 ms after the level drops
+let gateOpen = false,
+  quietFrames = 0;
+const gateRms = () => 10 ** ((+$("gate").value || -42) / 20); // the slider is in dB relative to full scale
+function updateGate(level) {
+  if (!$("gateOn").checked) return (gateOpen = true);
+  const open = gateRms();
+  if (level >= (gateOpen ? open * 0.7 : open)) {
+    quietFrames = 0;
+    gateOpen = true;
+  } else if (gateOpen && ++quietFrames > HANGOVER_FRAMES) gateOpen = false;
+  return gateOpen;
+}
+function showSpeechState() {
+  const el = $("speechState");
+  el.textContent = !session
+    ? ""
+    : !$("gateOn").checked
+      ? ""
+      : gateOpen
+        ? "speech"
+        : "silence";
+  el.style.color = gateOpen ? "#8fe3a0" : "var(--mute)";
+}
+$("gate").addEventListener(
+  "input",
+  () => ($("gateVal").textContent = `${$("gate").value} dB`),
+);
+$("gateOn").addEventListener("change", showSpeechState);
+
 // ---------------------------------------------------------------- history graphs
 const FRAME_RATE = 44100 / 512,
   SECONDS = 8,
@@ -121,13 +155,7 @@ const FRAME_RATE = 44100 / 512,
   LANE = 56;
 // [label, color, low, high, value from a frame]
 const LANES = [
-  [
-    "input level",
-    "#9b8fa8",
-    0,
-    1,
-    (f) => Math.min(1, Math.sqrt(f.level) * 2.5),
-  ],
+  ["input level", "#9b8fa8", 0, 1, (f) => levelLane(f.level)],
   ["frequency (Hz)", "#c9a7ff", 70, 500, (f) => f.params.frequency],
   ["voiceness", "#ffd27a", 0, 1, (f) => f.params.voiceness],
   ["intensity", "#ffd27a", 0, 1, (f) => f.params.intensity],
@@ -150,7 +178,9 @@ const LANES = [
   ["lip diameter", "#ff9f6b", 0, 5, (f) => f.params.lipDiameter ?? OPEN_LIP],
 ];
 const history = LANES.map(() => new Float32Array(N));
-const voicedHistory = new Uint8Array(N);
+const voicedHistory = new Uint8Array(N),
+  gateHistory = new Uint8Array(N);
+const levelLane = (rms) => Math.min(1, Math.sqrt(rms) * 2.5); // how the input level lane scales a level
 let written = 0; // frames written so far (the ring buffer position is written % N)
 const canvas = $("vizCanvas"),
   ctx = canvas.getContext("2d");
@@ -167,10 +197,11 @@ const valueEls = LANES.map(([label, color]) => {
 });
 const fmt = (v) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
 
-function record(frame) {
+function record(frame, sending) {
   const i = written % N;
   LANES.forEach(([, , , , get], k) => (history[k][i] = get(frame)));
   voicedHistory[i] = frame.voiced ? 1 : 0;
+  gateHistory[i] = sending ? 1 : 0;
   written++;
 }
 function drawHistory() {
@@ -195,6 +226,24 @@ function drawHistory() {
       values = history[lane];
     ctx.fillStyle = lane % 2 ? "#1d1824" : "#211b29";
     ctx.fillRect(0, top, W, LANE);
+    if (lane === 0) {
+      // input level: shade where speech is detected, and mark the threshold
+      ctx.fillStyle = "rgba(143,227,160,.12)";
+      for (let k = 0; k < count; k++)
+        if (gateHistory[at(k)])
+          ctx.fillRect(xOf(k), top, Math.max(1, W / N), LANE);
+      if ($("gateOn").checked) {
+        const ty = top + LANE - pad - levelLane(gateRms()) * (LANE - 2 * pad);
+        ctx.strokeStyle = "rgba(143,227,160,.8)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(0, ty);
+        ctx.lineTo(W, ty);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
     if (lane === 1) {
       // frequency: shade the frames the pitch tracker considers voiced
       ctx.fillStyle = "rgba(255,255,255,.05)";
@@ -290,6 +339,8 @@ async function start() {
 
     sentFrames = 0;
     written = 0;
+    gateOpen = false;
+    quietFrames = 0;
     const live = samuel.liveMimic({ onFrame });
     node.port.onmessage = (e) => live.push(e.data);
     session = { stream, context, source, node, live };
@@ -301,6 +352,7 @@ async function start() {
     });
     $("start").textContent = "stop";
     $("start").classList.add("on");
+    showSpeechState();
     setStatus(`listening (${Math.round(context.sampleRate)} Hz)`);
     drawRaf = requestAnimationFrame(drawLoop);
   } catch (error) {
@@ -312,11 +364,16 @@ async function start() {
 }
 
 function onFrame(frame) {
-  record(frame);
+  const wasOpen = gateOpen,
+    speech = updateGate(frame.level);
+  record(frame, speech);
   if ($("send").checked) {
-    toPinkTrombone(frameMessage(frame.params));
-    sentFrames++;
+    if (speech) {
+      toPinkTrombone(frameMessage(frame.params));
+      sentFrames++;
+    } else if (wasOpen) toPinkTrombone({ intensity: 0 }); // speech just ended: silence the voice once, then send nothing
   }
+  if (wasOpen !== speech) showSpeechState();
   $("stats").textContent =
     `${sentFrames} frames sent · ${session?.live.dropped ?? 0} dropped`;
 }
@@ -337,6 +394,8 @@ function stop() {
   $("start").textContent = "start";
   $("start").classList.remove("on");
   setStatus("stopped");
+  gateOpen = false;
+  showSpeechState();
   refreshControls();
 }
 $("start").addEventListener("click", () => (session ? stop() : start()));

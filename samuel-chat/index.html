@@ -1,0 +1,326 @@
+<html>
+  <head>
+    <title>Samuel chat</title>
+    <script src="../src/utils.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+      :root {
+        --bg: #17131c;
+        --card: #211b29;
+        --ink: #e9e1ee;
+        --mute: #9b8fa8;
+        --line: #352c41;
+        --hot: #ff6b9a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+      }
+      a {
+        color: var(--mute);
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        padding: 14px 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 0 24px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+      }
+      select,
+      input,
+      button {
+        font: inherit;
+        color: var(--ink);
+        background: #2b2335;
+        border: 1px solid #43385a;
+        border-radius: 6px;
+        padding: 6px 9px;
+      }
+      input[type="checkbox"] {
+        padding: 0;
+      }
+      input[type="number"] {
+        width: 64px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--hot);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .primary {
+        background: var(--hot);
+        border-color: var(--hot);
+        color: #2a0f1a;
+        font-weight: 600;
+      }
+      #record.on {
+        background: #c0392b;
+        border-color: #c0392b;
+        color: #fff;
+      }
+      #status,
+      .mute {
+        color: var(--mute);
+      }
+      #status.err,
+      .err {
+        color: #ff8a8a;
+      }
+      #code {
+        font:
+          600 20px ui-monospace,
+          Menlo,
+          monospace;
+        letter-spacing: 0.12em;
+        color: var(--hot);
+      }
+      #joinCode {
+        width: 110px;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      #log {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        height: 46vh;
+        min-height: 220px;
+        overflow-y: auto;
+        padding: 4px 2px 8px;
+      }
+      #empty {
+        margin: auto;
+        color: var(--mute);
+      }
+      .msg {
+        max-width: 78%;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .msg.me {
+        align-self: flex-end;
+        align-items: flex-end;
+      }
+      .msg.them {
+        align-self: flex-start;
+      }
+      .meta {
+        font-size: 12px;
+        color: var(--mute);
+      }
+      .text {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .bubble {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px 6px 6px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+      }
+      .me .bubble {
+        background: #3a2233;
+        border-color: #5c3350;
+      }
+      .them .bubble {
+        background: #2b2335;
+      }
+      .bubble button {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border-radius: 50%;
+        flex: none;
+      }
+      .bubble canvas {
+        width: 220px;
+        height: 34px;
+        display: block;
+        cursor: pointer;
+      }
+      .bubble .dur {
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+        min-width: 38px;
+      }
+      #composer {
+        margin-top: 10px;
+      }
+      #text {
+        flex: 1;
+        min-width: 200px;
+      }
+      .hint {
+        color: var(--mute);
+        font-size: 12px;
+        margin: 10px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="../">home</a>
+      <h1>Samuel chat</h1>
+      <span id="status">loading…</span>
+    </header>
+    <main>
+      <section class="card">
+        <h2>Connection</h2>
+        <div class="row">
+          <button id="create" class="primary">Create room</button>
+          <span class="mute" id="or">or</span>
+          <input
+            id="joinCode"
+            placeholder="room code"
+            maxlength="20"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="join">Join</button>
+          <button id="leave" hidden>Leave</button>
+          <b id="code"></b>
+          <button id="copyLink" hidden>Copy invite link</button>
+          <span id="conn" class="mute"></span>
+        </div>
+        <p class="hint">
+          One of you creates a room and sends the other the code or invite link.
+          Messages go straight between your two browsers.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Messages</h2>
+        <div id="log">
+          <div id="empty">
+            No messages yet. Type something, record your voice, or send an audio
+            file.
+          </div>
+        </div>
+        <div id="composer" class="row">
+          <input
+            id="text"
+            placeholder="Type a message and press Enter"
+            autocomplete="off"
+            disabled
+          />
+          <button id="sendText" disabled>send</button>
+          <select id="micDevice" title="microphone">
+            <option value="">default microphone</option>
+          </select>
+          <button id="record" disabled>record</button>
+          <label
+            >audio file
+            <input
+              type="file"
+              accept="audio/*"
+              id="audioInput"
+              disabled
+              style="max-width: 190px"
+          /></label>
+        </div>
+        <div class="row" style="margin-top: 10px">
+          <label
+            title="0 sends every frame; higher values allow more error and make messages smaller"
+            >simplify
+            <input
+              type="range"
+              id="quality"
+              min="0"
+              max="5"
+              step="0.1"
+              value="1"
+            />
+            <span id="qualityVal" style="display: inline-block; min-width: 92px"
+              >1.0 × (normal)</span
+            ></label
+          >
+          <label
+            ><input type="checkbox" id="autoPlay" checked /> play incoming
+            messages automatically</label
+          >
+          <label
+            >transpose
+            <input type="number" id="transpose" value="0" step="1" />
+            semitones</label
+          >
+          <label
+            >vocal tract length
+            <input
+              type="range"
+              id="tractSlider"
+              min="15"
+              max="88"
+              step="1"
+              value="44" />
+            <input
+              type="number"
+              id="tract"
+              min="15"
+              max="88"
+              step="1"
+              value="44"
+          /></label>
+          <button id="tractReset" title="back to the default length of 44">
+            44
+          </button>
+        </div>
+        <p class="hint">
+          Samuel turns what you type, say or upload into articulation on your
+          computer, simplifies each parameter separately, and sends only that (a
+          few kilobytes, no audio; typed messages also carry their text). The
+          other person plays it on their own Pink Trombone: open that page in
+          another tab and click it once so it can make sound. You can play your
+          own messages too. Transpose and tract length apply to what you hear,
+          when you press play.
+        </p>
+      </section>
+    </main>
+  </body>
+  <script src="./src/script.js" type="module"></script>
+</html>

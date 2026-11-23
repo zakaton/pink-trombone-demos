@@ -749,9 +749,25 @@ const clearResultContainers = () => {
     .forEach((resultContainer) => removeResultContainer(resultContainer));
 };
 
+// who receives what this page plays: Pink Trombone, plus the avatar page when "also drive avatar" is ticked
+const avatarOn = document.getElementById("avatarOn");
+try {
+  const saved = localStorage.getItem("tts-timeline-avatar");
+  if (saved !== null) avatarOn.checked = saved === "1";
+} catch (error) {}
+avatarOn.addEventListener("change", () => {
+  try {
+    localStorage.setItem("tts-timeline-avatar", avatarOn.checked ? "1" : "0");
+  } catch (error) {}
+});
+const recipients = (...names) => [
+  ...names,
+  ...(avatarOn.checked ? ["samuel-morphtargets"] : []),
+];
+
 const throttledSend = throttle((message) => {
   send({
-    to: ["pink-trombone", "lip-sync"],
+    to: recipients("pink-trombone", "lip-sync"),
     type: "message",
     ...message,
   });
@@ -836,3 +852,13 @@ pigLatinCheckbox.addEventListener("input", (event) => {
   //console.log("isUsingPigLatin", isUsingPigLatin);
   onResultsUpdate();
 });
+
+// Enter in the text or phonemes box plays everything (Shift+Enter still adds a line break, and Enter while an input method
+// is composing text is left alone). The box has already laid out the result, because that happens as you type.
+[textInput, phonemesInput].forEach((box) =>
+  box.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    if (!playButton.disabled) playButton.click(); // the button's own handlers also start the playhead
+  }),
+);

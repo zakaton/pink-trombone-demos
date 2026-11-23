@@ -53,7 +53,7 @@ const interpolateTowardsMorphTargets = (morphTargets, interpolation = 1) => {
     morphTargetInfluences[key] = lerp(
       morphTargetInfluences[key] || 0,
       morphTargets[name] || 0,
-      interpolation
+      interpolation,
     );
   }
 };
@@ -114,7 +114,7 @@ const mouthAnimationFrame = (timestamp) => {
   }
   const timeOffset = (timestamp - startTime) / 1000;
   const nextKeyframeIndex = keyframes.findIndex(
-    (keyframe) => keyframe.time > timeOffset
+    (keyframe) => keyframe.time > timeOffset,
   );
   const isFirstKeyframe = nextKeyframeIndex == 0;
   const nextKeyframe = keyframes[nextKeyframeIndex];
@@ -125,12 +125,12 @@ const mouthAnimationFrame = (timestamp) => {
     const interpolation = getInterpolation(
       previousKeyframe.time,
       nextKeyframe.time,
-      timeOffset
+      timeOffset,
     );
     setMouthFromPhonemes(
       previousKeyframe.name,
       nextKeyframe.name,
-      interpolation
+      interpolation,
     );
     requestAnimationFrame(mouthAnimationFrame);
   } else {
@@ -178,7 +178,7 @@ const getMorphTargetsFromPhoneme = ({ phoneme, index }) => {
     } else {
       morphTargets = Object.assign(
         morphTargets,
-        phonemeToMorphTargets[phoneme]
+        phonemeToMorphTargets[phoneme],
       );
     }
   }
@@ -217,14 +217,14 @@ const setMouthFromPhonemes = (fromPhoneme, toPhoneme, interpolation = 0) => {
   if (toPhoneme) {
     const toMorphTargets = getMorphTargetsFromPhoneme(unpackedToPhoneme);
     const sharedKeys = Object.keys(fromMorphTargets).concat(
-      Object.keys(toMorphTargets)
+      Object.keys(toMorphTargets),
     );
     sharedKeys.forEach((key) => {
       if (!(key in morphTargets)) {
         morphTargets[key] = lerp(
           fromMorphTargets[key] || 0,
           toMorphTargets[key] || 0,
-          interpolation
+          interpolation,
         );
       }
     });
@@ -256,7 +256,7 @@ const setMouthFromMorphTargets = (morphTargets = {}) => {
     }
     if (isDebug) {
       morphTargetContainerInputs[name]?.forEach(
-        (input) => (input.value = morphTargetInfluences[key] || 0)
+        (input) => (input.value = morphTargetInfluences[key] || 0),
       );
     }
   }
@@ -452,7 +452,7 @@ const setupMorphTargetUI = () => {
       morphTargetKeysToIgnore.some((key) => name.toLowerCase().includes(key))
     ) {
       //console.log("ignoring", name);
-      continue;
+      // continue;
     }
     const morphTargetContainer = morphTargetTemplate.content
       .cloneNode(true)
@@ -471,7 +471,7 @@ const setupMorphTargetUI = () => {
             _input.value = value;
           }
         });
-      })
+      }),
     );
     morphTargetsContainer.appendChild(morphTargetContainer);
   }

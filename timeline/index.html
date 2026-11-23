@@ -29,7 +29,8 @@
       a {
         color: var(--mute);
       }
-      #bar {
+      #bar,
+      .bar {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -62,8 +63,42 @@
         font-weight: 600;
         min-width: 60px;
       }
-      #top {
+      #audioBar b {
+        color: var(--mute);
+        font-weight: 600;
+      }
+      #audName {
+        color: var(--mute);
+        max-width: 260px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      #mixCtl {
+        display: contents;
+      }
+      #mixCtl[hidden] {
+        display: none;
+      }
+      #rec.on {
+        background: #c0392b;
+        border-color: #c0392b;
+      }
+      #top,
+      #waveRow {
         display: flex;
+      }
+      #waveRow[hidden] {
+        display: none;
+      }
+      #waveRow > div {
+        width: 210px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        color: var(--mute);
+        border-left: 4px solid #6fb7d9;
       }
       #top div {
         width: 210px;
@@ -136,6 +171,11 @@
       >
       <label><input type="checkbox" id="snapOn" /> snap to 0.05s</label>
       <label
+        title="dragging or grabbing pitch keys moves them by whole semitones"
+        ><input type="checkbox" id="pitchSnap" checked /> snap pitch to
+        semitones</label
+      >
+      <label
         ><input type="checkbox" id="scrubOn" checked /> hear scrubbing</label
       >
       <label
@@ -148,6 +188,11 @@
       <label
         ><input type="checkbox" id="liveOn" /> live edit from Pink
         Trombone</label
+      >
+      <label
+        title="also send everything to the avatar page, so its face follows (needs /samuel-morphtargets open)"
+        ><input type="checkbox" id="avatarOn" checked /> also drive
+        avatar</label
       >
       <button id="selAll">Select all (A)</button>
       <button id="selNone">Select none</button>
@@ -198,9 +243,56 @@
       <button id="reset">Reset</button>
       <input id="file" type="file" accept=".json" hidden />
     </div>
+    <div id="audioBar" class="bar">
+      <b>audio reference</b>
+      <button id="audLoad">Load audio…</button>
+      <input id="audFile" type="file" accept="audio/*,video/*" hidden />
+      <select id="micSel" title="microphone">
+        <option value="">default microphone</option>
+      </select>
+      <button id="rec">Record</button>
+      <span id="audName"></span>
+      <span id="mixCtl" hidden>
+        <label
+          >listen to
+          <select id="mix">
+            <option value="both">both</option>
+            <option value="articulation">articulation</option>
+            <option value="recording">recording</option>
+          </select></label
+        >
+        <label
+          >recording volume
+          <input
+            id="mixVol"
+            type="range"
+            min="0"
+            max="1.5"
+            step="0.01"
+            value="1"
+        /></label>
+        <label
+          title="positive = the recording happens later than the articulation"
+          >sync offset
+          <input
+            id="audioOffset"
+            type="number"
+            step="10"
+            value="0"
+            style="width: 72px"
+          />
+          ms</label
+        >
+        <button id="audRemove">Remove audio</button>
+      </span>
+    </div>
     <div id="top">
       <div></div>
       <canvas id="ruler"></canvas>
+    </div>
+    <div id="waveRow" hidden>
+      <div>audio reference</div>
+      <canvas id="wave"></canvas>
     </div>
     <div id="body">
       <div id="heads"></div>
@@ -217,7 +309,14 @@
       keys every track at the playhead, Space plays, Home fits the view, wheel
       zooms, shift+wheel pans, C cleans up the selected keys (each parameter on
       its own; the tolerance is a percentage of that parameter's range), Ctrl/⌘Z
-      undoes.
+      undoes. The pitch lane is in semitones: keys move by whole semitones
+      (untick the box for free movement), the pitch row shows the same value
+      twice, as a note such as C#3 (with cents when it is off the note) and as a
+      frequency in Hz, both updating live; type into either one (the note box
+      also takes 220 Hz or a MIDI note number). Load or record an audio
+      reference to see its waveform above the lanes: scrub it, choose which to
+      hear (articulation, recording or both) and nudge the sync offset until
+      they line up.
     </p>
     <script src="./src/script.js"></script>
   </body>

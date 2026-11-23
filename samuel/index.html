@@ -259,6 +259,17 @@
             />
             %</label
           >
+          <label
+            >transpose
+            <input
+              type="number"
+              id="transpose"
+              value="0"
+              step="1"
+              style="width: 64px"
+            />
+            semitones</label
+          >
           <label>
             vocal tract length
             <input
@@ -333,11 +344,13 @@
           to" set to recording or both, you hear the original audio at that
           point too). For audio files and recordings, "listen to" lets you hear
           the original, the articulation, or both at once; nudge the sync offset
-          if they sound slightly apart. Samuel's articulation is built for a
-          vocal tract length of 44; a different length scales the tongue,
-          constriction and lip positions with it. Simplify drops keyframes that
-          a straight line between their neighbours already reproduces, which
-          makes the result lighter to play and easier to edit in the timeline.
+          if they sound slightly apart. Transpose shifts the pitch of what is
+          sent to Pink Trombone (the graphs keep showing Samuel's own pitch).
+          Samuel's articulation is built for a vocal tract length of 44; a
+          different length scales the tongue, constriction and lip positions
+          with it. Simplify drops keyframes that a straight line between their
+          neighbours already reproduces, which makes the result lighter to play
+          and easier to edit in the timeline.
         </p>
       </section>
     </main>

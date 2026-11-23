@@ -1,0 +1,317 @@
+<html>
+  <head>
+    <title>Samuel live chat</title>
+    <script src="../src/utils.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+      :root {
+        --bg: #17131c;
+        --card: #211b29;
+        --ink: #e9e1ee;
+        --mute: #9b8fa8;
+        --line: #352c41;
+        --hot: #ff6b9a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+      }
+      a {
+        color: var(--mute);
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        padding: 14px 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 24px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+      }
+      select,
+      input,
+      button {
+        font: inherit;
+        color: var(--ink);
+        background: #2b2335;
+        border: 1px solid #43385a;
+        border-radius: 6px;
+        padding: 6px 9px;
+      }
+      input[type="checkbox"] {
+        padding: 0;
+      }
+      input[type="number"] {
+        width: 64px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--hot);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .primary {
+        background: var(--hot);
+        border-color: var(--hot);
+        color: #2a0f1a;
+        font-weight: 600;
+      }
+      #start {
+        min-width: 90px;
+      }
+      #start.on {
+        background: #c0392b;
+        border-color: #c0392b;
+        color: #fff;
+      }
+      #status,
+      .mute {
+        color: var(--mute);
+      }
+      #status.err,
+      .err {
+        color: #ff8a8a;
+      }
+      #code {
+        font:
+          600 20px ui-monospace,
+          Menlo,
+          monospace;
+        letter-spacing: 0.12em;
+        color: var(--hot);
+      }
+      #joinCode {
+        width: 110px;
+        font-family: ui-monospace, Menlo, monospace;
+        text-transform: lowercase;
+      }
+      .stats {
+        margin-left: auto;
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+      }
+      .viz {
+        display: flex;
+        margin-top: 12px;
+      }
+      .labels {
+        width: 170px;
+        flex: none;
+      }
+      .lbl {
+        height: 44px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding-left: 8px;
+        border-left: 4px solid;
+        gap: 1px;
+      }
+      .lbl span {
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+      }
+      .wrap {
+        flex: 1;
+        min-width: 0;
+      }
+      canvas {
+        display: block;
+      }
+      .hint {
+        color: var(--mute);
+        font-size: 12px;
+        margin: 10px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="../">home</a>
+      <h1>Samuel live chat</h1>
+      <span id="status">loading…</span>
+    </header>
+    <main>
+      <section class="card">
+        <h2>Connection</h2>
+        <div class="row">
+          <button id="create" class="primary">Create room</button>
+          <span class="mute">or</span>
+          <input
+            id="joinCode"
+            placeholder="room code"
+            maxlength="20"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="join">Join</button>
+          <button id="leave" hidden>Leave</button>
+          <b id="code"></b>
+          <button id="copyLink" hidden>Copy invite link</button>
+          <span id="conn" class="mute"></span>
+        </div>
+        <p class="hint">
+          One of you creates a room and sends the other the code or invite link.
+          Only Samuel's articulation data is streamed (a few kilobytes a second)
+          between your two browsers; no audio is sent. Each of you then hears
+          the other's voice through your own Pink Trombone tab, never your own.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Your voice (sent to your partner)</h2>
+        <div class="row">
+          <select id="micDevice" title="microphone">
+            <option value="">default microphone</option>
+          </select>
+          <button id="start" class="primary" disabled>start</button>
+          <label><input type="checkbox" id="mute" /> mute</label>
+          <label title="stop sending while the microphone is quiet"
+            ><input type="checkbox" id="gateOn" checked /> only during
+            speech</label
+          >
+          <label
+            >threshold
+            <input
+              type="range"
+              id="gate"
+              min="-70"
+              max="-20"
+              step="1"
+              value="-42"
+            />
+            <span id="gateVal" style="display: inline-block; min-width: 52px"
+              >-42 dB</span
+            ></label
+          >
+          <b id="speechState" style="min-width: 60px; color: var(--mute)"></b>
+          <label
+            title="how much the articulation is simplified before it is sent. 0 sends every frame; higher values allow more error and send less data"
+            >simplify
+            <input
+              type="range"
+              id="quality"
+              min="0"
+              max="5"
+              step="0.1"
+              value="1"
+            />
+            <span id="qualityVal" style="display: inline-block; min-width: 92px"
+              >1.0 × (normal)</span
+            ></label
+          >
+          <span id="txStats" class="stats"></span>
+        </div>
+        <div class="viz">
+          <div id="txLabels" class="labels"></div>
+          <div id="txWrap" class="wrap"><canvas id="txCanvas"></canvas></div>
+        </div>
+        <p class="hint">
+          Lines are every frame Samuel measured; the dots are the keys that were
+          actually sent. Flat stretches and straight slopes need very few. Wear
+          headphones: Pink Trombone's sound would otherwise be picked up by your
+          microphone and sent back to your partner.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Your partner's voice (played on Pink Trombone)</h2>
+        <div class="row">
+          <label
+            >transpose
+            <input type="number" id="transpose" value="0" step="1" />
+            semitones</label
+          >
+          <label
+            >vocal tract length
+            <input
+              type="range"
+              id="tractSlider"
+              min="15"
+              max="88"
+              step="1"
+              value="44" />
+            <input
+              type="number"
+              id="tract"
+              min="15"
+              max="88"
+              step="1"
+              value="44"
+          /></label>
+          <button id="tractReset" title="back to the default length of 44">
+            44
+          </button>
+          <label
+            title="how far behind the partner playback runs; more is smoother on a poor connection, less is more immediate"
+            >delay
+            <input
+              type="range"
+              id="delay"
+              min="60"
+              max="500"
+              step="10"
+              value="150"
+            />
+            <span id="delayVal" style="display: inline-block; min-width: 48px"
+              >150 ms</span
+            ></label
+          >
+          <b id="partnerState" style="min-width: 70px; color: var(--mute)"></b>
+          <span id="rxStats" class="stats"></span>
+        </div>
+        <div class="viz">
+          <div id="rxLabels" class="labels"></div>
+          <div id="rxWrap" class="wrap"><canvas id="rxCanvas"></canvas></div>
+        </div>
+        <p class="hint">
+          Open the Pink Trombone page in another tab and click it once so it can
+          make sound. Transpose and tract length are applied here, to what you
+          hear, so each of you can set them for the voice you listen to.
+        </p>
+      </section>
+    </main>
+  </body>
+  <script src="./src/script.js" type="module"></script>
+</html>
